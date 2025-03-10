@@ -4,7 +4,7 @@
 *
 *   DEPENDENCIES:
 *       raylib 4.0  - Windowing/input management and drawing.
-*       raygui 0.1  - Splines
+*       rlsplines 0.1  - Splines
 *
 *   COMPILATION (Windows - MinGW):
 *       gcc -o $(NAME_PART).exe $(FILE_NAME) -I../../src -lraylib -lopengl32 -lgdi32 -std=c99
@@ -31,7 +31,7 @@ int main()
     const int screenWidth = 800;
     const int screenHeight = 540;
 
-    InitWindow(screenWidth, screenHeight, "raygui - animation curves");
+    InitWindow(screenWidth, screenHeight, "rlsplines - spline_2D");
     SetTargetFPS(60);
 
     Spline splineLinear;
@@ -67,9 +67,7 @@ int main()
 
         ClearBackground(RAYWHITE);
 
-        //DrawSpline(splineLinear, RED);
         DrawSpline(splineQuad, RED);
-        // TODO
 
         EndDrawing();
         //----------------------------------------------------------------------------------
@@ -78,8 +76,9 @@ int main()
     CloseWindow();
     //--------------------------------------------------------------------------------------
 
-    UnloadSpline(splineLinear);
     UnloadSpline(splineQuad);
+
+    UnloadSpline(splineLinear);
 
     return 0;
 }

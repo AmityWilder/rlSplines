@@ -672,6 +672,7 @@ RLSPLINESAPI int GetSplineSegmentCount(int type, int pointCount)
     return segmentCount;
 }
 
+// Draw a 2D spline using lines
 void DrawSpline(Spline spline, Color color)
 {
     const float step = 1.0f/SPLINE_SEGMENT_DIVISIONS;

@@ -44,9 +44,15 @@ int main()
     Spline splineQuad;
     {
         // Points only need to be coped, the array doesn't have to outlive the Spline
-        Vector2 points[] = { { 50,100 }, { 100,200 }, { 150,100 }, { 200,200 } };
-        Vector2 controlPoints[] = { { 50,200 }, { 150,200 }, { 200,100 } };
+        Vector2 points[]        = { { 50,100 },             { 100,200 },              { 150,100 },              { 200,200 } };
+        Vector2 controlPoints[] = {             { 50,200 },              { 150,200 },              { 200,100 }              };
         splineQuad = GenSplineBezierQuad(points, controlPoints, 4);
+    }
+
+    Spline splineCubic;
+    {
+        // Points only need to be coped, the array doesn't have to outlive the Spline
+        splineCubic = GenSplineBezierCubic(NULL, NULL, NULL, 4);
     }
 
     //--------------------------------------------------------------------------------------

@@ -60,15 +60,6 @@
 *
 **********************************************************************************************/
 
-//#define AMY_IS_A_DUMMY_AND_FORGOT_TO_DISABLE_THIS_MACRO // ! ONLY FOR TESTING: DISABLE BEFORE PUSHING !
-#ifdef AMY_IS_A_DUMMY_AND_FORGOT_TO_DISABLE_THIS_MACRO
-    #define RLSPLINES_IMPLEMENTATION
-    #define RLSPLINES_3D
-    #define RLSPLINES_GRADIENT
-    #define RLSPLINES_ULTRA
-    #define RLSPLINES_DIMENSION_ALIASES
-#endif
-
 #ifndef RLSPLINES_H
 #define RLSPLINES_H
 
@@ -83,7 +74,7 @@
 
 // Function specifiers in case library is build/used as a shared library (Windows)
 // NOTE: Microsoft specifiers to tell compiler that symbols are imported/exported from a .dll
-#ifdef defined(_WIN32)
+#if defined(_WIN32)
     #if defined(BUILD_LIBTYPE_SHARED)
         #define RLSPLINESAPI __declspec(dllexport)     // We are building the library as a Win32 shared library (.dll)
     #elif defined(USE_LIBTYPE_SHARED)
@@ -95,6 +86,9 @@
 #ifndef RLSPLINESAPI
     #define RLSPLINESAPI       // Functions defined as 'extern' by default (implicit specifiers)
 #endif
+
+#undef RLSPLINES_3D             // Under construction
+#undef RLSPLINES_GRADIENT       // Under construction
 
 //----------------------------------------------------------------------------------
 // Defines and Macros
@@ -266,7 +260,24 @@ RLSPLINESAPI Spline GenSplineBezierQuad(const Vector2 *anchorPoints, const Vecto
 RLSPLINESAPI Spline GenSplineBezierCubic(const Vector2 *anchorPoints, const Vector2 *controlOutPoints, const Vector2 *controlInPoints, int anchorCount); // Generate spline: Cubic Bezier, minimum 4 points (2 control points)
 RLSPLINESAPI void UnloadSpline(Spline spline);                                          // Unload spline from CPU memory (RAM)
 
-RLSPLINESAPI int GetSplineSegmentCount(int type, int pointCount);                         // Get (calculate) number of segments (sub-splines) in a Spline
+RLSPLINESAPI Spline SplineJoin(Spline spline1, Spline spline2);                         // Create a new spline joining two splines of the same type
+RLSPLINESAPI Spline SplineJoinMany(const Spline *spline, int splineCount);              // Create a new spline joining multiple splines of the same type
+
+RLSPLINESAPI int GetSplineSegmentCount(int type, int pointCount);                       // Get (calculate) number of segments in a spline
+
+// Splines point access functions
+
+RLSPLINESAPI Vector2 GetSplinePoint(Spline spline, int index);                          // Get position of spline point
+RLSPLINESAPI Vector2 GetSplineAnchor(Spline spline, int index);                         // Get position of spline anchor point
+RLSPLINESAPI Vector2 GetSplineControl(Spline spline, int index);                        // Get position of quadratic bezier spline control point
+RLSPLINESAPI Vector2 GetSplineControlIn(Spline spline, int index);                      // Get position of cubic bezier spline in-control point
+RLSPLINESAPI Vector2 GetSplineControlOut(Spline spline, int index);                     // Get position of cubic bezier spline out-control point
+
+RLSPLINESAPI void SetSplinePoint(Spline spline, int index, Vector2 position);           // Set position of spline point
+RLSPLINESAPI void SetSplineAnchor(Spline spline, int index, Vector2 position);          // Set position of spline anchor point
+RLSPLINESAPI void SetSplineControl(Spline spline, int index, Vector2 position);         // Set position of quadratic bezier spline control point
+RLSPLINESAPI void SetSplineControlIn(Spline spline, int index, Vector2 position);       // Set position of cubic bezier spline in-control point
+RLSPLINESAPI void SetSplineControlOut(Spline spline, int index, Vector2 position);      // Set position of cubic bezier spline out-control point
 
 // Splines drawing functions
 RLSPLINESAPI void DrawSpline(Spline spline, Color color);                               // Draw a 2D spline using lines
@@ -501,90 +512,94 @@ typedef SplineGradient SplineGradient1D;
 #endif
 
 // Generate spline: Linear, minimum 2 points
+// Use NULL for points to get a spline with uninitialized points.
 RLSPLINESAPI Spline GenSplineLinear(const Vector2 *points, int pointCount)
 {
     Spline spline = { 0 };
     spline.type = SPLINE_LINEAR;
 
-    if (points != NULL)
+    if (pointCount >= 2)
     {
-        if (pointCount >= 2)
+        spline.pointCount = pointCount;
+        spline.points = (float *)RLSPLINES_MALLOC(spline.pointCount*sizeof(float)*2);
+        if (points != NULL)
         {
-            spline.pointCount = pointCount;
-            spline.points = (float *)RLSPLINES_MALLOC(spline.pointCount*sizeof(float)*2);
             for (int i = 0, j = 0; i < pointCount; ++i)
             {
                 spline.points[j++] = points[i].x;
                 spline.points[j++] = points[i].y;
             }
         }
-        else TRACELOG(LOG_WARNING, "RLSPLINES: Linear spline requires minimum 2 points");
     }
+    else TRACELOG(LOG_WARNING, "RLSPLINES: Linear spline requires minimum 2 points");
 
     return spline;
 }
 
 // Generate spline: B-Spline, minimum 4 points
+// Use NULL for points to get a spline with uninitialized points.
 RLSPLINESAPI Spline GenSplineBasis(const Vector2 *points, int pointCount)
 {
     Spline spline = { 0 };
     spline.type = SPLINE_BASIS;
 
-    if (points != NULL)
+    if (pointCount >= 4)
     {
-        if (pointCount >= 4)
+        spline.pointCount = pointCount;
+        spline.points = (float *)RLSPLINES_MALLOC(spline.pointCount*sizeof(float)*2);
+        if (points != NULL)
         {
-            spline.pointCount = pointCount;
-            spline.points = (float *)RLSPLINES_MALLOC(spline.pointCount*sizeof(float)*2);
             for (int i = 0, j = 0; i < pointCount; ++i)
             {
                 spline.points[j++] = points[i].x;
                 spline.points[j++] = points[i].y;
             }
         }
-        else TRACELOG(LOG_WARNING, "RLSPLINES: Basis spline requires minimum 4 points");
     }
+    else TRACELOG(LOG_WARNING, "RLSPLINES: Basis spline requires minimum 4 points");
 
     return spline;
 }
 
 // Generate spline: Catmull-Rom, minimum 4 points
+// Use NULL for points to get a spline with uninitialized points.
 RLSPLINESAPI Spline GenSplineCatmullRom(const Vector2 *points, int pointCount)
 {
     Spline spline = { 0 };
     spline.type = SPLINE_CATMULL_ROM;
 
-    if (points != NULL)
+    if (pointCount >= 4)
     {
-        if (pointCount >= 4)
+        spline.pointCount = pointCount;
+        spline.points = (float *)RLSPLINES_MALLOC(spline.pointCount*sizeof(float)*2);
+        if (points != NULL)
         {
-            spline.pointCount = pointCount;
-            spline.points = (float *)RLSPLINES_MALLOC(spline.pointCount*sizeof(float)*2);
             for (int i = 0, j = 0; i < pointCount; ++i)
             {
                 spline.points[j++] = points[i].x;
                 spline.points[j++] = points[i].y;
             }
         }
-        else TRACELOG(LOG_WARNING, "RLSPLINES: Catmull-Rom spline requires minimum 4 points");
     }
+    else TRACELOG(LOG_WARNING, "RLSPLINES: Catmull-Rom spline requires minimum 4 points");
 
     return spline;
 }
 
 // Generate spline: Quadratic Bezier, minimum 3 points (1 control point): [p1, p3...], [c2, c4...]
+// Use NULL for anchorPoints to get a spline with uninitialized points.
 // NOTE: controlPoints must have anchorPointCount - 1 elements.
 RLSPLINESAPI Spline GenSplineBezierQuad(const Vector2 *anchorPoints, const Vector2 *controlPoints, int anchorPointCount)
 {
     Spline spline = { 0 };
     spline.type = SPLINE_BEZIER_QUAD;
 
-    if ((anchorPoints != NULL) && (controlPoints != NULL))
+    if (anchorPointCount >= 2)
     {
-        if (anchorPointCount >= 2)
+        spline.pointCount = 2*anchorPointCount - 1;
+        spline.points = (float *)RLSPLINES_MALLOC(spline.pointCount*sizeof(float)*2);
+        if ((anchorPoints != NULL) && (controlPoints != NULL))
         {
-            spline.pointCount = 2*anchorPointCount - 1;
-            spline.points = (float *)RLSPLINES_MALLOC(spline.pointCount*sizeof(float)*2);
             for (int i = 0, j = 0; i < anchorPointCount; ++i)
             {
                 spline.points[j++] = anchorPoints[i].x;
@@ -596,25 +611,26 @@ RLSPLINESAPI Spline GenSplineBezierQuad(const Vector2 *anchorPoints, const Vecto
                 }
             }
         }
-        else TRACELOG(LOG_WARNING, "RLSPLINES: Quadratic bezier spline requires minimum 2 points + 1 control point");
     }
+    else TRACELOG(LOG_WARNING, "RLSPLINES: Quadratic bezier spline requires minimum 2 points + 1 control point");
 
     return spline;
 }
 
 // Generate spline: Cubic Bezier, minimum 4 points (2 control points): [p1, p4...], [c2, c5...], [c3, c6...]
+// Use NULL for anchorPoints to get a spline with uninitialized points.
 // NOTE: controlOutPoints and controlInPoints must have anchorPointCount - 1 elements each.
 RLSPLINESAPI Spline GenSplineBezierCubic(const Vector2 *anchorPoints, const Vector2 *controlOutPoints, const Vector2 *controlInPoints, int anchorPointCount)
 {
     Spline spline = { 0 };
     spline.type = SPLINE_BEZIER_CUBIC;
 
-    if ((anchorPoints != NULL) && (controlOutPoints != NULL) && (controlInPoints != NULL))
+    if (anchorPointCount >= 2)
     {
-        if (anchorPointCount >= 2)
+        spline.pointCount = 3*anchorPointCount - 2;
+        spline.points = (float *)RLSPLINES_MALLOC(spline.pointCount*sizeof(float)*2);
+        if ((anchorPoints != NULL) && (controlOutPoints != NULL) && (controlInPoints != NULL))
         {
-            spline.pointCount = 3*anchorPointCount - 2;
-            spline.points = (float *)RLSPLINES_MALLOC(spline.pointCount*sizeof(float)*2);
             for (int i = 0, j = 0; i < anchorPointCount; ++i)
             {
                 spline.points[j++] = anchorPoints[i].x;
@@ -628,8 +644,8 @@ RLSPLINESAPI Spline GenSplineBezierCubic(const Vector2 *anchorPoints, const Vect
                 }
             }
         }
-        else TRACELOG(LOG_WARNING, "RLSPLINES: Cubic bezier spline requires minimum 2 points + 2 control points");
     }
+    else TRACELOG(LOG_WARNING, "RLSPLINES: Cubic bezier spline requires minimum 2 points + 2 control points");
 
     return spline;
 }
@@ -640,36 +656,202 @@ RLSPLINESAPI void UnloadSpline(Spline spline)
     RLSPLINES_FREE(spline.points);
 }
 
+// Create a new spline joining two separate splines of the same type
+// NOTE: Does not unload input splines
+RLSPLINESAPI Spline SplineJoin(Spline spline1, Spline spline2)
+{
+    Spline joined = { 0 };
+
+    if ((spline1.type == spline2.type) && (spline1.points != NULL) && (spline2.points != NULL))
+    {
+        joined.type = spline1.type;
+        joined.pointCount = spline1.pointCount + spline2.pointCount;
+        joined.points = (float *)RLSPLINES_MALLOC(joined.pointCount*sizeof(float)*2);
+        int j = 0;
+        if (spline1.points != NULL)
+        {
+            for (int k = 0; k < 2*spline1.pointCount; ++k)
+            {
+                joined.points[j++] = spline1.points[k];
+            }
+        }
+        if (spline2.points != NULL)
+        {
+            for (int k = 0; k < 2*spline1.pointCount; ++k)
+            {
+                joined.points[j++] = spline1.points[k];
+            }
+        }
+    }
+    else TRACELOG(LOG_WARNING, "RLSPLINES: SplineJoin requires spline1 and spline2 to be the same type");
+
+    return joined;
+}
+
+// Create a new spline joining multiple splines of the same type
+// NOTE: Does not unload input splines
+RLSPLINESAPI Spline SplineJoinMany(const Spline *splines, int splineCount)
+{
+    Spline joined = { 0 };
+
+    if ((splines != NULL) && (splineCount > 1))
+    {
+        joined.type = splines[0].type;
+        for (int i = 1; i < splineCount; ++i)
+        {
+            if ((splines[i].type == splines[0].type) && (splines[i].points != NULL))
+            {
+                joined.pointCount += splines[i].pointCount;
+            }
+            else
+            {
+                TRACELOG(LOG_WARNING, "RLSPLINES: SplineJoinMany requires every spline to be the same type and not NULL");
+                return RLSPLINES_CLITERAL(Spline){ 0 };
+            }
+        }
+
+        joined.points = (float *)RLSPLINES_MALLOC(joined.pointCount*sizeof(float)*2);
+        for (int i = 0, j = 0; i < splineCount; ++i)
+        {
+            for (int k = 0; k < 2*splines[i].pointCount; ++k)
+            {
+                joined.points[j++] = splines[i].points[k];
+            }
+        }
+    }
+
+    return joined;
+}
+
 // Get (calculate) number of segments (sub-splines) in a Spline, equal to the number of points (excluding control points) minus 1
 RLSPLINESAPI int GetSplineSegmentCount(int type, int pointCount)
 {
     int segmentCount = -1;
 
-    if (type == SPLINE_LINEAR)
-    {
-        segmentCount = pointCount - 1;
-    }
-    else if (type == SPLINE_BASIS)
-    {
-        // TODO: Confirm segments work like this in B-splines
-        segmentCount = pointCount - 1;
-    }
-    else if (type == SPLINE_CATMULL_ROM)
-    {
-        // TODO: Confirm segments work like this in Catmull-Rom splines
-        segmentCount = pointCount - 1;
-    }
-    else if (type == SPLINE_BEZIER_QUAD)
-    {
-        segmentCount = (pointCount + 1)/2;    // inverse of 2*pointCount - 1
-    }
-    else if (type == SPLINE_BEZIER_CUBIC)
-    {
-        segmentCount = (pointCount + 2)/3;    // inverse of 3*pointCount - 2
-    }
+    if (type == SPLINE_LINEAR) segmentCount = pointCount - 1;
+    else if (type == SPLINE_BASIS) segmentCount = pointCount - 1;               // TODO: Confirm segments work like this in B-splines
+    else if (type == SPLINE_CATMULL_ROM) segmentCount = pointCount - 1;         // TODO: Confirm segments work like this in Catmull-Rom splines
+    else if (type == SPLINE_BEZIER_QUAD) segmentCount = (pointCount + 1)/2;     // inverse of 2*pointCount - 1
+    else if (type == SPLINE_BEZIER_CUBIC) segmentCount = (pointCount + 2)/3;    // inverse of 3*pointCount - 2
     else TRACELOG(LOG_WARNING, "RLSPLINES: Unknown spline type: %i", type);
 
     return segmentCount;
+}
+
+// Splines point access functions
+
+static int SplineAnchorIndex(int type, int index)
+{
+    int idx = -1;
+
+    if (type == SPLINE_LINEAR) idx = index;
+    else if (type == SPLINE_BASIS) idx = index;                          // TODO: Confirm anchors work like this in B-splines
+    else if (type == SPLINE_CATMULL_ROM) idx = index;                    // TODO: Confirm anchors work like this in Catmull-Rom splines
+    else if (type == SPLINE_BEZIER_QUAD) idx = 2*index;
+    else if (type == SPLINE_BEZIER_CUBIC) idx = 3*index;
+    else TRACELOG(LOG_WARNING, "RLSPLINES: Unknown spline type: %i", spline.type);
+
+    return idx;
+}
+
+// Get position of spline point
+Vector2 GetSplinePoint(Spline spline, int index)
+{
+    Vector2 point = { 0,0 };
+    
+    int idx = 2*index;
+    if ((0 <= idx) && (idx < spline.pointCount - 1) && (spline.points != NULL))
+    {
+        point.x = spline.points[idx];
+        point.y = spline.points[idx + 1];
+    }
+    else TRACELOG(LOG_WARNING, "RLSPLINES: Index out of bounds");
+
+    return point;
+}
+
+// Get position of spline anchor point
+Vector2 GetSplineAnchor(Spline spline, int index)
+{
+    return GetSplinePoint(spline, SplineAnchorIndex(spline.type, index));
+}
+
+// Get position of quadratic bezier spline control point
+Vector2 GetSplineControl(Spline spline, int index)
+{
+    int idx = -1;
+    if (spline.type == SPLINE_BEZIER_QUAD) idx = 4*index + 2;
+    else TRACELOG(LOG_WARNING, "RLSPLINES: GetSplineControl only valid for SPLINE_BEZIER_QUAD");
+    
+    return GetSplinePoint(spline, idx);
+}
+
+// Get position of cubic bezier spline in-control point
+Vector2 GetSplineControlIn(Spline spline, int index)
+{
+    int idx = -1;
+    if (spline.type == SPLINE_BEZIER_CUBIC) idx = 6*index + 2;
+    else TRACELOG(LOG_WARNING, "RLSPLINES: GetSplineControlIn only valid for SPLINE_BEZIER_CUBIC");
+    
+    return GetSplinePoint(spline, idx);
+}
+
+// Get position of cubic bezier spline out-control point
+Vector2 GetSplineControlOut(Spline spline, int index)
+{
+    int idx = -1;
+    if (spline.type == SPLINE_BEZIER_CUBIC) idx = 6*index + 4;
+    else TRACELOG(LOG_WARNING, "RLSPLINES: GetSplineControlIn only valid for SPLINE_BEZIER_CUBIC");
+    
+    return GetSplinePoint(spline, idx);
+}
+
+// Set position of spline point
+void SetSplinePoint(Spline spline, int index, Vector2 position)
+{
+    int idx = 2*index;
+    if ((0 <= idx) && (idx < spline.pointCount - 1) && (spline.points != NULL))
+    {
+        spline.points[idx] = position.x;
+        spline.points[idx + 1] = position.y;
+    }
+    else TRACELOG(LOG_WARNING, "RLSPLINES: Index out of bounds");
+}
+
+// Set position of spline anchor point
+void SetSplineAnchor(Spline spline, int index, Vector2 position)
+{
+    return GetSplinePoint(spline, SplineAnchorIndex(spline.type, index), position);
+}
+
+// Set position of quadratic bezier spline control point
+void SetSplineControl(Spline spline, int index, Vector2 position)
+{
+    int idx = -1;
+    if (spline.type == SPLINE_BEZIER_QUAD) idx = 4*index + 2;
+    else TRACELOG(LOG_WARNING, "RLSPLINES: SetSplineControl only valid for SPLINE_BEZIER_QUAD");
+    
+    return SetSplinePoint(spline, idx, position);
+}
+
+// Set position of cubic bezier spline in-control point
+void SetSplineControlIn(Spline spline, int index, Vector2 position)
+{
+    int idx = -1;
+    if (spline.type == SPLINE_BEZIER_CUBIC) idx = 6*index + 2;
+    else TRACELOG(LOG_WARNING, "RLSPLINES: SetSplineControlIn only valid for SPLINE_BEZIER_CUBIC");
+    
+    return SetSplinePoint(spline, idx, position);
+}
+
+// Set position of cubic bezier spline out-control point
+void SetSplineControlOut(Spline spline, int index, Vector2 position)
+{
+    int idx = -1;
+    if (spline.type == SPLINE_BEZIER_CUBIC) idx = 6*index + 4;
+    else TRACELOG(LOG_WARNING, "RLSPLINES: SetSplineControlIn only valid for SPLINE_BEZIER_CUBIC");
+    
+    return SetSplinePoint(spline, idx, position);
 }
 
 // Draw a 2D spline using lines
@@ -751,7 +933,49 @@ void DrawSpline(Spline spline, Color color)
         }
         else if (spline.type == SPLINE_BEZIER_CUBIC)
         {
-            // TODO
+            if (spline.pointCount >= 4)
+            {
+                float startPosX = spline.points[0], startPosY = spline.points[1];
+                float controlOutPosX, controlOutPosY;
+                float controlInPosX, controlInPosY;
+                float endPosX, endPosY;
+
+                float xPrev = startPosX,
+                      yPrev = startPosY;
+
+                rlBegin(RL_LINES);
+                    rlColor4ub(color.r, color.g, color.b, color.a);
+                    for (int i = 2; i < 2*spline.pointCount - 5; )
+                    {
+                        controlOutPosX = spline.points[i++];
+                        controlOutPosY = spline.points[i++];
+                        controlInPosX = spline.points[i++];
+                        controlInPosY = spline.points[i++];
+                        endPosX = spline.points[i++];
+                        endPosY = spline.points[i++];
+                        for (int division = 1; division <= SPLINE_SEGMENT_DIVISIONS; ++division)
+                        {
+                            float t = division*step;
+
+                            float a = powf(1.0f - t, 3);
+                            float b = 3.0f*powf(1.0f - t, 2)*t;
+                            float c = 3.0f*(1.0f - t)*t*t;
+                            float d = t*t*t;
+
+                            float x = a*startPosX + b*controlOutPosX + c*controlInPosX + d*endPosX;
+                            float y = a*startPosY + b*controlOutPosY + c*controlInPosY + d*endPosY;
+
+                            rlVertex2f(xPrev, yPrev);
+                            rlVertex2f(x, y);
+
+                            xPrev = x;
+                            yPrev = y;
+                        }
+                        startPosX = endPosX;
+                        startPosY = endPosY;
+                    }
+                rlEnd();
+            }
         }
     }
 }

@@ -14,46 +14,55 @@
 *           If not defined, the library is in header only mode and can be included in other headers
 *           or source files without problems. But only ONE file should hold the implementation.
 *
-*       #define RLSPLINES_SUPPORT_TRACELOG  <1 or 0>
-*           Enable tracelog for rlsplines. (enabled by default)
+*       #define RLSPLINES_STANDALONE
+*           Allows rlsplines to work without Raylib.
 *
-*       #define RLSPLINES_SUPPORT_SPLINE_LINEAR  <1 or 0>
-*           Enable support for linear splines. (enabled by default)
+*       #define RLSPLINES_SUPPORT_DRAWING  <1 or 0>  (1 by default)
+*           Enable support for spline rendering. Requires defining your own implementations for some
+*           functions if used with RLSPLINES_STANDALONE.
 *
-*       #define RLSPLINES_SUPPORT_SPLINE_BASIS  <1 or 0>
-*           Enable support for B-splines. (disabled by default)
+*       #define RLSPLINES_SUPPORT_TRACELOG  <1 or 0>  (1 by default)
+*           Enable tracelog for rlsplines.
 *
-*       #define RLSPLINES_SUPPORT_SPLINE_CATMULL_ROM  <1 or 0>
-*           Enable support for Bezier splines. (disabled by default)
+*       #define RLSPLINES_SUPPORT_SPLINE_LINEAR  <1 or 0>  (1 by default)
+*           Enable support for linear splines.
 *
-*       #define RLSPLINES_SUPPORT_SPLINE_BEZIER_QUAD  <1 or 0>
-*           Enable support for Quadratic Bezier splines. (disabled by default)
+*       #define RLSPLINES_SUPPORT_SPLINE_BASIS  <1 or 0>  (0 by default)
+*           Enable support for B-splines.
 *
-*       #define RLSPLINES_SUPPORT_SPLINE_BEZIER_CUBIC  <1 or 0>
-*           Enable support for Cubic Bezier splines. (recommended, enabled by default)
+*       #define RLSPLINES_SUPPORT_SPLINE_CATMULL_ROM  <1 or 0>  (0 by default)
+*           Enable support for Bezier splines.
 *
-*       #define RLSPLINES_SUPPORT_SPLINE_CUSTOM  <1 or 0>
-*           Enable support for a custom spline type. (disabled by default)
-*           Requires defining your own implementations for the following functions:
+*       #define RLSPLINES_SUPPORT_SPLINE_BEZIER_QUAD  <1 or 0>  (0 by default)
+*           Enable support for Quadratic Bezier splines.
 *
-*           - [TODO]
+*       #define RLSPLINES_SUPPORT_SPLINE_BEZIER_CUBIC  <1 or 0>  (1 by default)
+*           Enable support for Cubic Bezier splines.
 *
-*       #define RLSPLINES_SUPPORT_3D
+*       #define RLSPLINES_SUPPORT_SPLINE_CUSTOM  <1 or 0>  (0 by default)
+*           Enable support for a custom spline type.
+*           Requires defining your own implementations for some functions.
+*
+*       #define RLSPLINES_SUPPORT_ARR_SPLINE  <1 or 0>  (0 by default)
+*           Enable support for splines holding an external buffer instead of
+*           allocating their own memory.
+*
+*       #define RLSPLINES_SUPPORT_3D  <1 or 0>  (0 by default)
 *           Include support for 3D splines.
 *
-*       #define RLSPLINES_SUPPORT_GRADIENT
-*           Include support for gradient spline drawing.
+*       #define RLSPLINES_SUPPORT_GRADIENT  <1 or 0>  (0 by default)
+*           Include support for gradient spline drawing. Implies RLSPLINES_SUPPORT_DRAWING.
 *
-*       #define RLSPLINES_SUPPORT_ULTRA
+*       #define RLSPLINES_SUPPORT_ULTRA  <1 or 0>  (0 by default)
 *           Include support for "ultra" (`_Ult()`) spline functions (lots of parameters).
 *
-*       #define RLSPLINES_DIMENSION_ALIASES
+*       #define RLSPLINES_DIMENSION_ALIASES  <1 or 0>  (0 by default)
 *           Define aliases with "1/2D" in the name for unspecified spline types/functions, to
 *           help distinguish from their 2/3D counterparts, for consistency, or if you just prefer
 *           having that additional specificity.
 *
-*       #define SPLINE_SEGMENT_DIVISIONS  <your value here>
-*           Define the number of subdivisions used per spline segment. (24 by default)
+*       #define SPLINE_SEGMENT_DIVISIONS  <integer greater than 0>  (24 by default)
+*           Define the number of subdivisions used per spline segment.
 *
 *   VERSIONS HISTORY:
 *       [TODO]
@@ -95,9 +104,9 @@
 #define RLSPLINES_VERSION_SEGMENT 0
 #define RLSPLINES_VERSION  "0.1"
 
-#include "raylib.h"
-#include "rlgl.h"
-#include "math.h"
+#ifndef RLSPLINES_STANDALONE
+    #include "raylib.h"
+#endif
 
 // Function specifiers in case library is build/used as a shared library (Windows)
 // NOTE: Microsoft specifiers to tell compiler that symbols are imported/exported from a .dll
@@ -114,6 +123,13 @@
     #define RLSPLINESAPI       // Functions defined as 'extern' by default (implicit specifiers)
 #endif
 
+// Configuration defaults
+#ifndef RLSPLINES_SUPPORT_DRAWING
+    #define RLSPLINES_SUPPORT_DRAWING 1
+#endif
+#ifndef RLSPLINES_SUPPORT_TRACELOG
+    #define RLSPLINES_SUPPORT_TRACELOG 1
+#endif
 #ifndef RLSPLINES_SUPPORT_SPLINE_LINEAR
     #define RLSPLINES_SUPPORT_SPLINE_LINEAR 1
 #endif
@@ -132,48 +148,38 @@
 #ifndef RLSPLINES_SUPPORT_SPLINE_CUSTOM
     #define RLSPLINES_SUPPORT_SPLINE_CUSTOM 0
 #endif
+#ifndef RLSPLINES_SUPPORT_ARR_SPLINE
+    #define RLSPLINES_SUPPORT_ARR_SPLINE 0
+#endif
+#ifndef RLSPLINES_SUPPORT_3D
+    #define RLSPLINES_SUPPORT_3D 0
+#endif
+#ifndef RLSPLINES_SUPPORT_GRADIENT
+    #define RLSPLINES_SUPPORT_GRADIENT 0
+#endif
+#ifndef RLSPLINES_SUPPORT_ULTRA
+    #define RLSPLINES_SUPPORT_ULTRA 0
+#endif
+#ifndef RLSPLINES_DIMENSION_ALIASES
+    #define RLSPLINES_DIMENSION_ALIASES 0
+#endif
+#ifndef SPLINE_SEGMENT_DIVISIONS
+    #define SPLINE_SEGMENT_DIVISIONS  24        /* Spline segments subdivisions */
+#endif
 
-#undef RLSPLINES_SUPPORT_3D             // Under construction
-#undef RLSPLINES_SUPPORT_GRADIENT       // Under construction
-#undef RLSPLINES_SUPPORT_ULTRA          // Under construction
+#define RLSPLINES_SUPPORT_ARR_SPLINE  1         // Actively being developed
+#define RLSPLINES_SUPPORT_3D          0         // Ignore syntax errors until ready to implement
+#define RLSPLINES_SUPPORT_GRADIENT    0         // Ignore syntax errors until ready to implement
+#define RLSPLINES_SUPPORT_ULTRA       0         // Ignore syntax errors until ready to implement
 
 //----------------------------------------------------------------------------------
 // Defines and Macros
 //----------------------------------------------------------------------------------
-// Allow custom memory allocators
-#if !defined(RLSPLINES_MALLOC) || !defined(RLSPLINES_CALLOC) || !defined(RLSPLINES_REALLOC) || !defined(RLSPLINES_FREE)
-    #include <malloc.h>
-#endif
-#ifndef RLSPLINES_MALLOC
-    #define RLSPLINES_MALLOC(sz)       malloc(sz)
-#endif
-#ifndef RLSPLINES_CALLOC
-    #define RLSPLINES_CALLOC(n,sz)     calloc(n,sz)
-#endif
-#ifndef RLSPLINES_REALLOC
-    #define RLSPLINES_REALLOC(p,sz)    realloc(p,sz)
-#endif
-#ifndef RLSPLINES_FREE
-    #define RLSPLINES_FREE(p)          free(p)
-#endif
-
-// Simple log system to avoid printf() calls if required
-// NOTE: Avoiding those calls, also avoids const strings memory usage
-#ifndef RLSPLINES_SUPPORT_TRACELOG
-    #define RLSPLINES_SUPPORT_TRACELOG 1
-#endif
-#if RLSPLINES_SUPPORT_TRACELOG
-    #define RLSPLINES_TRACELOG(level, ...)           TraceLog(level, __VA_ARGS__)
-#else
-    #define RLSPLINES_TRACELOG(level, ...)           (void)0
-#endif
-
-#ifndef SPLINE_SEGMENT_DIVISIONS
-    #define SPLINE_SEGMENT_DIVISIONS        24      // Spline segments subdivisions
-#endif
+// ...
 
 //----------------------------------------------------------------------------------
 // Types and Structures Definition
+// NOTE: Some types are required for RLSPLINES_STANDALONE usage
 //----------------------------------------------------------------------------------
 #ifndef __cplusplus
 // Boolean type
@@ -182,22 +188,46 @@
     #endif
 #endif
 
+#ifndef RLSPLINES_STANDALONE
+    #if RLSPLINES_SUPPORT_DRAWING
+        typedef Color {
+            unsigned char r;
+            unsigned char g;
+            unsigned char b;
+            unsigned char a;
+        } Color;
+    #endif      // RLSPLINES_SUPPORT_DRAWING
+
+    typedef Vector2 {
+        float x;
+        float y;
+    } Vector2;
+
+    #if RLSPLINES_SUPPORT_3D
+        typedef Vector3 {
+            float x;
+            float y;
+            float z;
+        } Vector3;
+    #endif      // RLSPLINES_SUPPORT_3D
+#endif      // RLSPLINES_STANDALONE
+
 // Spline, 2D spline point data
 typedef struct Spline {
-    int type;                           // Spline type: SPLINE_LINEAR, SPLINE_BASIS, SPLINE_CATMULL_ROM, SPLINE_BEZIER_QUAD, or SPLINE_BEZIER_CUBIC
+    int splineType;                     // Spline type: See SplineType enum for possible values
     int pointCount;                     // Number of points and control points (spline type controls ratio and order)
     float *points;                      // Points and control points in spline (XY - 2 components per vertex), minimum 4 points (2 control points): [p1, c2, c3, p4, c5, c6...]
 } Spline;
 
 #ifdef RLSPLINES_SUPPORT_3D
-// Spline3D, 3D spline point data
-typedef struct Spline3D {
-    int type;                           // Spline type: SPLINE_LINEAR, SPLINE_BASIS, SPLINE_CATMULL_ROM, SPLINE_BEZIER_QUAD, or SPLINE_BEZIER_CUBIC
-    int pointCount;                     // Number of points and control points (spline type controls ratio and order)
-    float *points;                      // Point and control point positions in spline (XYZ - 3 components per vertex), minimum 4 points (2 control points): [p1, c2, c3, p4, c5, c6...]
-    float *rotations;                   // Roll (twist about tangent) angles, or NULL if all are 0
-    SplineProfile profile;              // Spline profile, the shape that gets extruded along the spline's curve
-} Spline3D;
+    // Spline3D, 3D spline point data
+    typedef struct Spline3D {
+        int splineType;                     // Spline type: See SplineType enum for possible values
+        int pointCount;                     // Number of points and control points (spline type controls ratio and order)
+        float *points;                      // Point and control point positions in spline (XYZ - 3 components per vertex), minimum 4 points (2 control points): [p1, c2, c3, p4, c5, c6...]
+        float *rotations;                   // Roll (twist about tangent) angles, or NULL if all are 0
+        SplineProfile profile;              // Spline profile, the shape that gets extruded along the spline's curve
+    } Spline3D;
 #endif      // RLSPLINES_SUPPORT_3D
 
 // Spline thickness, variable thickness data in the form of a 1D Cubic Bezier spline with remapped timings (t-values) along the curve of another spline
@@ -208,47 +238,45 @@ typedef struct SplineThickness {
 } SplineThickness;
 
 #ifdef RLSPLINES_SUPPORT_3D
-// 2D Spline thickness, variable thickness data in the form of a 2D Cubic Bezier spline with remapped timings (t-values) along the curve of another spline
-// NOTE: Only valid for a 3D spline, a 2D spline only has 1 perpendicular axis
-typedef struct SplineThickness2D {
-    int thicknessCount;                 // Number of thicknesses
-    float *timings;                     // Thickness timings (t-values), minimum 4 values (2 control values): [p1t, c2t, c3t, p4t, c5t, c6t...], or NULL if evenly spread
-    float *thicknesses;                 // Thicknesses, minimum 4 points (2 control points): [p1, c2, c3, p4, c5, c6...]
-} SplineThickness2D;
+    // 2D Spline thickness, variable thickness data in the form of a 2D Cubic Bezier spline with remapped timings (t-values) along the curve of another spline
+    // NOTE: Only valid for a 3D spline, a 2D spline only has 1 perpendicular axis
+    typedef struct SplineThickness2D {
+        int thicknessCount;                 // Number of thicknesses
+        float *timings;                     // Thickness timings (t-values), minimum 4 values (2 control values): [p1t, c2t, c3t, p4t, c5t, c6t...], or NULL if evenly spread
+        float *thicknesses;                 // Thicknesses, minimum 4 points (2 control points): [p1, c2, c3, p4, c5, c6...]
+    } SplineThickness2D;
 #endif      // RLSPLINES_SUPPORT_3D
 
 #ifdef RLSPLINES_SUPPORT_GRADIENT
+    // Spline gradient, color gradient data along a spline in the form of a linear color spline with remapped timings (t-values) along the curve of another spline
+    typedef struct SplineGradient {
+        int controlCount;                   // Number of controls
+        float *timings;                     // Control timings, minimum 2 timings, or NULL if evenly spread
+        unsigned char *colors;              // Control colors (RGBA - 4 components per vertex)
+    } SplineGradient;
 
-// Spline gradient, color gradient data along a spline in the form of a linear color spline with remapped timings (t-values) along the curve of another spline
-typedef struct SplineGradient {
-    int controlCount;                   // Number of controls
-    float *timings;                     // Control timings, minimum 2 timings, or NULL if evenly spread
-    unsigned char *colors;              // Control colors (RGBA - 4 components per vertex)
-} SplineGradient;
+    // TODO:
+    //   I'm not sure if this is the correct way of handling a 2D/3D gradient.
+    //   The effect I'm going for is to allow multiple parallel colors at the same time-along-curve, but on separate perpendicular axis.
+    //   However, I don't know whether that belongs in the "timing remap" field or a separate field entirely.
 
-// TODO:
-//   I'm not sure if this is the correct way of handling a 2D/3D gradient.
-//   The effect I'm going for is to allow multiple parallel colors at the same time-along-curve, but on separate perpendicular axis.
-//   However, I don't know whether that belongs in the "timing remap" field or a separate field entirely.
+    // Spline gradient, color gradient data along a spline in the form of a linear color spline with remapped 2D timings (t-values) along the curve of another spline
+    // NOTE: Only valid for a spline with thickness, a 1-pixel-wide spline only has one gradientable axis
+    typedef struct SplineGradient2D {
+        int controlCount;                   // Number of controls
+        float *timings;                     // Control timings (XY - 2 components per timing), minimum 2 timings, or NULL if evenly spread
+        unsigned char *colors;              // Control colors (RGBA - 4 components per vertex)
+    } SplineGradient2D;
 
-// Spline gradient, color gradient data along a spline in the form of a linear color spline with remapped 2D timings (t-values) along the curve of another spline
-// NOTE: Only valid for a spline with thickness, a 1-pixel-wide spline only has one gradientable axis
-typedef struct SplineGradient2D {
-    int controlCount;                   // Number of controls
-    float *timings;                     // Control timings (XY - 2 components per timing), minimum 2 timings, or NULL if evenly spread
-    unsigned char *colors;              // Control colors (RGBA - 4 components per vertex)
-} SplineGradient2D;
-
-#ifdef RLSPLINES_SUPPORT_3D
-// Spline gradient, color gradient data along a spline in the form of a linear color spline with remapped 3D timings (t-values) along the curve of another spline
-// NOTE: Only valid for a 3D spline, a 2D spline only has 2 gradientable axis
-typedef struct SplineGradient3D {
-    int controlCount;                   // Number of controls
-    float *timings;                     // Control timings (XYZ - 3 components per timing), minimum 2 timings, or NULL if evenly spread
-    unsigned char *colors;              // Control colors (RGBA - 4 components per vertex)
-} SplineGradient3D;
-#endif      // RLSPLINES_SUPPORT_3D
-
+    #ifdef RLSPLINES_SUPPORT_3D
+        // Spline gradient, color gradient data along a spline in the form of a linear color spline with remapped 3D timings (t-values) along the curve of another spline
+        // NOTE: Only valid for a 3D spline, a 2D spline only has 2 gradientable axis
+        typedef struct SplineGradient3D {
+            int controlCount;                   // Number of controls
+            float *timings;                     // Control timings (XYZ - 3 components per timing), minimum 2 timings, or NULL if evenly spread
+            unsigned char *colors;              // Control colors (RGBA - 4 components per vertex)
+        } SplineGradient3D;
+    #endif      // RLSPLINES_SUPPORT_3D
 #endif      // RLSPLINES_SUPPORT_GRADIENT
 
 
@@ -320,20 +348,23 @@ extern "C" {            // Prevents name mangling of functions
 // Splines constructor functions
 // NOTE: Points and controls will be copied, the arrays passed to these functions will NOT be stored in the returned Spline.
 RLSPLINESAPI Spline GenSpline(int splineType, int segmentCount);                        // Generate spline with all points at 0,0
+#ifdef RLSPLINES_SUPPORT_ARR_SPLINE
+    RLSPLINESAPI Spline GenArrSpline(int splineType, float *buffer, int pointCount);        // Construct a spline whose memory is managed outside of rlsplines (buffer must have an even number of elements)
+#endif
 #if RLSPLINES_SUPPORT_SPLINE_LINEAR
-RLSPLINESAPI Spline GenSplineLinear(const Vector2 *points, int pointCount);             // Generate spline: Linear, minimum 2 points
+    RLSPLINESAPI Spline GenSplineLinear(const Vector2 *points, int pointCount);             // Generate spline: Linear, minimum 2 points
 #endif
 #if RLSPLINES_SUPPORT_SPLINE_BASIS
-RLSPLINESAPI Spline GenSplineBasis(const Vector2 *points, int pointCount);              // Generate spline: B-Spline, minimum 4 points
+    RLSPLINESAPI Spline GenSplineBasis(const Vector2 *points, int pointCount);              // Generate spline: B-Spline, minimum 4 points
 #endif
 #if RLSPLINES_SUPPORT_SPLINE_CATMULL_ROM
-RLSPLINESAPI Spline GenSplineCatmullRom(const Vector2 *points, int pointCount);         // Generate spline: Catmull-Rom, minimum 4 points
+    RLSPLINESAPI Spline GenSplineCatmullRom(const Vector2 *points, int pointCount);         // Generate spline: Catmull-Rom, minimum 4 points
 #endif
 #if RLSPLINES_SUPPORT_SPLINE_BEZIER_QUAD
-RLSPLINESAPI Spline GenSplineBezierQuad(const Vector2 *anchorPoints, const Vector2 *controlPoints, int anchorCount); // Generate spline: Quadratic Bezier, minimum 3 points (1 control point)
+    RLSPLINESAPI Spline GenSplineBezierQuad(const Vector2 *anchorPoints, const Vector2 *controlPoints, int anchorCount); // Generate spline: Quadratic Bezier, minimum 3 points (1 control point)
 #endif
 #if RLSPLINES_SUPPORT_SPLINE_BEZIER_CUBIC
-RLSPLINESAPI Spline GenSplineBezierCubic(const Vector2 *anchorPoints, const Vector2 *controlOutPoints, const Vector2 *controlInPoints, int anchorCount); // Generate spline: Cubic Bezier, minimum 4 points (2 control points)
+    RLSPLINESAPI Spline GenSplineBezierCubic(const Vector2 *anchorPoints, const Vector2 *controlOutPoints, const Vector2 *controlInPoints, int anchorCount); // Generate spline: Cubic Bezier, minimum 4 points (2 control points)
 #endif
 RLSPLINESAPI Spline ResizeSpline(Spline spline, int newSegmentCount);                   // Unload the spline and generate a new spline with newSegmentCount segments, retaining existing points
 RLSPLINESAPI void UnloadSpline(Spline spline);                                          // Unload spline
@@ -348,207 +379,219 @@ RLSPLINESAPI int GetSplineSegmentCount(int splineType, int pointCount);         
 RLSPLINESAPI Vector2 GetSplinePoint(Spline spline, int index);                          // Get position of spline point
 RLSPLINESAPI Vector2 GetSplineAnchor(Spline spline, int index);                         // Get position of spline anchor point
 #if RLSPLINES_SUPPORT_SPLINE_BEZIER_QUAD
-RLSPLINESAPI Vector2 GetSplineControl(Spline spline, int index);                        // Get position of quadratic bezier spline control point
+    RLSPLINESAPI Vector2 GetSplineControl(Spline spline, int index);                        // Get position of quadratic bezier spline control point
 #endif
 #if RLSPLINES_SUPPORT_SPLINE_BEZIER_CUBIC
-RLSPLINESAPI Vector2 GetSplineControlIn(Spline spline, int index);                      // Get position of cubic bezier spline in-control point
-RLSPLINESAPI Vector2 GetSplineControlOut(Spline spline, int index);                     // Get position of cubic bezier spline out-control point
+    RLSPLINESAPI Vector2 GetSplineControlIn(Spline spline, int index);                      // Get position of cubic bezier spline in-control point
+    RLSPLINESAPI Vector2 GetSplineControlOut(Spline spline, int index);                     // Get position of cubic bezier spline out-control point
 #endif
 
 // Splines point x access functions
 RLSPLINESAPI float GetSplinePointX(Spline spline, int index);                           // Get x-position of spline point
 RLSPLINESAPI float GetSplineAnchorX(Spline spline, int index);                          // Get x-position of spline anchor point
 #if RLSPLINES_SUPPORT_SPLINE_BEZIER_QUAD
-RLSPLINESAPI float GetSplineControlX(Spline spline, int index);                         // Get x-position of quadratic bezier spline control point
+    RLSPLINESAPI float GetSplineControlX(Spline spline, int index);                         // Get x-position of quadratic bezier spline control point
 #endif
 #if RLSPLINES_SUPPORT_SPLINE_BEZIER_CUBIC
-RLSPLINESAPI float GetSplineControlInX(Spline spline, int index);                       // Get x-position of cubic bezier spline in-control point
-RLSPLINESAPI float GetSplineControlOutX(Spline spline, int index);                      // Get x-position of cubic bezier spline out-control point
+    RLSPLINESAPI float GetSplineControlInX(Spline spline, int index);                       // Get x-position of cubic bezier spline in-control point
+    RLSPLINESAPI float GetSplineControlOutX(Spline spline, int index);                      // Get x-position of cubic bezier spline out-control point
 #endif
 
 // Splines point y access functions
 RLSPLINESAPI float GetSplinePointY(Spline spline, int index);                           // Get y-position of spline point
 RLSPLINESAPI float GetSplineAnchorY(Spline spline, int index);                          // Get y-position of spline anchor point
 #if RLSPLINES_SUPPORT_SPLINE_BEZIER_QUAD
-RLSPLINESAPI float GetSplineControlY(Spline spline, int index);                         // Get y-position of quadratic bezier spline control point
+    RLSPLINESAPI float GetSplineControlY(Spline spline, int index);                         // Get y-position of quadratic bezier spline control point
 #endif
 #if RLSPLINES_SUPPORT_SPLINE_BEZIER_CUBIC
-RLSPLINESAPI float GetSplineControlInY(Spline spline, int index);                       // Get y-position of cubic bezier spline in-control point
-RLSPLINESAPI float GetSplineControlOutY(Spline spline, int index);                      // Get y-position of cubic bezier spline out-control point
+    RLSPLINESAPI float GetSplineControlInY(Spline spline, int index);                       // Get y-position of cubic bezier spline in-control point
+    RLSPLINESAPI float GetSplineControlOutY(Spline spline, int index);                      // Get y-position of cubic bezier spline out-control point
 #endif
 
 // Splines set point functions
 RLSPLINESAPI void SetSplinePoint(Spline spline, int index, Vector2 position);           // Set position of spline point
 RLSPLINESAPI void SetSplineAnchor(Spline spline, int index, Vector2 position);          // Set position of spline anchor point
 #if RLSPLINES_SUPPORT_SPLINE_BEZIER_QUAD
-RLSPLINESAPI void SetSplineControl(Spline spline, int index, Vector2 position);         // Set position of quadratic bezier spline control point
+    RLSPLINESAPI void SetSplineControl(Spline spline, int index, Vector2 position);         // Set position of quadratic bezier spline control point
 #endif
 #if RLSPLINES_SUPPORT_SPLINE_BEZIER_CUBIC
-RLSPLINESAPI void SetSplineControlIn(Spline spline, int index, Vector2 position);       // Set position of cubic bezier spline in-control point
-RLSPLINESAPI void SetSplineControlOut(Spline spline, int index, Vector2 position);      // Set position of cubic bezier spline out-control point
+    RLSPLINESAPI void SetSplineControlIn(Spline spline, int index, Vector2 position);       // Set position of cubic bezier spline in-control point
+    RLSPLINESAPI void SetSplineControlOut(Spline spline, int index, Vector2 position);      // Set position of cubic bezier spline out-control point
 #endif
 
 // Splines set x functions
 RLSPLINESAPI void SetSplinePointX(Spline spline, int index, float value);               // Set x-position of spline point
 RLSPLINESAPI void SetSplineAnchorX(Spline spline, int index, float value);              // Set x-position of spline anchor point
 #if RLSPLINES_SUPPORT_SPLINE_BEZIER_QUAD
-RLSPLINESAPI void SetSplineControlX(Spline spline, int index, float value);             // Set x-position of quadratic bezier spline control point
+    RLSPLINESAPI void SetSplineControlX(Spline spline, int index, float value);             // Set x-position of quadratic bezier spline control point
 #endif
 #if RLSPLINES_SUPPORT_SPLINE_BEZIER_CUBIC
-RLSPLINESAPI void SetSplineControlInX(Spline spline, int index, float value);           // Set x-position of cubic bezier spline in-control point
-RLSPLINESAPI void SetSplineControlOutX(Spline spline, int index, float value);          // Set x-position of cubic bezier spline out-control point
+    RLSPLINESAPI void SetSplineControlInX(Spline spline, int index, float value);           // Set x-position of cubic bezier spline in-control point
+    RLSPLINESAPI void SetSplineControlOutX(Spline spline, int index, float value);          // Set x-position of cubic bezier spline out-control point
 #endif
 
 // Splines set y functions
 RLSPLINESAPI void SetSplinePointY(Spline spline, int index, float value);               // Set y-position of spline point
 RLSPLINESAPI void SetSplineAnchorY(Spline spline, int index, float value);              // Set y-position of spline anchor point
 #if RLSPLINES_SUPPORT_SPLINE_BEZIER_QUAD
-RLSPLINESAPI void SetSplineControlY(Spline spline, int index, float value);             // Set y-position of quadratic bezier spline control point
+    RLSPLINESAPI void SetSplineControlY(Spline spline, int index, float value);             // Set y-position of quadratic bezier spline control point
 #endif
 #if RLSPLINES_SUPPORT_SPLINE_BEZIER_CUBIC
-RLSPLINESAPI void SetSplineControlInY(Spline spline, int index, float value);           // Set y-position of cubic bezier spline in-control point
-RLSPLINESAPI void SetSplineControlOutY(Spline spline, int index, float value);          // Set y-position of cubic bezier spline out-control point
+    RLSPLINESAPI void SetSplineControlInY(Spline spline, int index, float value);           // Set y-position of cubic bezier spline in-control point
+    RLSPLINESAPI void SetSplineControlOutY(Spline spline, int index, float value);          // Set y-position of cubic bezier spline out-control point
 #endif
 
-// Splines drawing functions
-RLSPLINESAPI void DrawSpline(Spline spline, Color color);                               // Draw a 2D spline using lines
-RLSPLINESAPI void DrawSplineEx(Spline spline, float thick, Color color);                // Draw a 2D spline with thickness
-RLSPLINESAPI void DrawSplineVar(Spline spline, SplineThickness thick, Color color);     // Draw a 2D spline with variable thickness
-RLSPLINESAPI void DrawSplinePro(Spline spline, SplineThickness thick, SplineCap cap, float capSize, SplineElbow elbow, float maxSharpness, Color color); // Draw a 2D spline with 'pro' parameters
-#ifdef RLSPLINES_SUPPORT_ULTRA
-RLSPLINESAPI void DrawSplineUlt(                                                        // Draw a 2D spline with ultra parameters
-    Spline spline,
-    SplineThickness thick,
-    SplineCap startCap,
-    float startCapSize,
-    SplineCap endCap,
-    float endCapSize,
-    const SplineElbow *elbows,          // Number of elbows must match number of spline segments (total points (excluding control points) minus 1)
-    const float *maxSharpnesses,        // Can be NULL if no elbow is SPLINE_ELBOW_SHARP
-    Color color
-);
-#endif      // RLSPLINES_SUPPORT_ULTRA
+// Splines position/derivative functions
+RLSPLINESAPI Vector2 GetSplinePosition(Spline spline, float t);                         // Calculate position at t [0.0f .. 1.0f] along spline
+RLSPLINESAPI Vector2 GetSplineVelocity(Spline spline, float t);                         // Calculate velocity (derivative order 1) at t [0.0f .. 1.0f] along spline
+RLSPLINESAPI Vector2 GetSplineAcceleration(Spline spline, float t);                     // Calculate acceleration (derivative order 2) at t [0.0f .. 1.0f] along spline
+RLSPLINESAPI Vector2 GetSplineJolt(Spline spline, float t);                             // Calculate jolt/jerk (derivative order 3) at t [0.0f .. 1.0f] along spline
+RLSPLINESAPI Vector2 GetSplineNDerivative(Spline spline, int order, float t);           // Calculate derivative order n at t [0.0f .. 1.0f] along spline
 
-#ifdef RLSPLINES_SUPPORT_GRADIENT
+RLSPLINESAPI Rectangle GetSplineBounds(Spline spline);                                  // Calculate bounding box of spline
 
-// Gradient splines drawing functions
-RLSPLINESAPI void DrawSplineGradient(Spline spline, SplineGradient colors);
-RLSPLINESAPI void DrawSplineGradientEx(Spline spline, float thick, SplineGradient colors);
-RLSPLINESAPI void DrawSplineGradientVar(Spline spline, SplineThickness thick, SplineGradient colors);
-RLSPLINESAPI void DrawSplineGradientPro(Spline spline, SplineThickness thick, SplineCap cap, float capSize, SplineElbow elbow, float maxSharpness, SplineGradient colors);
-#ifdef RLSPLINES_SUPPORT_ULTRA
-RLSPLINESAPI void DrawSplineGradientUlt(
-    Spline spline,
-    SplineThickness thick,
-    SplineCap startCap,
-    float startCapSize,
-    SplineCap endCap,
-    float endCapSize,
-    const SplineElbow *elbows,          // Number of elbows must match number of spline segments (total points (excluding control points) minus 1)
-    const float *maxSharpnesses,        // Can be NULL if no elbow is SPLINE_ELBOW_SHARP
-    SplineGradient colors
-);
-#endif      // RLSPLINES_SUPPORT_ULTRA
+#if RLSPLINES_SUPPORT_DRAWING
+    // Splines drawing functions
+    RLSPLINESAPI void DrawSpline(Spline spline, Color color);                               // Draw a 2D spline using lines
+    RLSPLINESAPI void DrawSplineEx(Spline spline, float thick, Color color);                // Draw a 2D spline with thickness
+    RLSPLINESAPI void DrawSplineVar(Spline spline, SplineThickness thick, Color color);     // Draw a 2D spline with variable thickness
+    RLSPLINESAPI void DrawSplinePro(Spline spline, SplineThickness thick, SplineCap cap, float capSize, SplineElbow elbow, float maxSharpness, Color color); // Draw a 2D spline with 'pro' parameters
+    #ifdef RLSPLINES_SUPPORT_ULTRA
+        RLSPLINESAPI void DrawSplineUlt(                                                        // Draw a 2D spline with ultra parameters
+            Spline spline,
+            SplineThickness thick,
+            SplineCap startCap,
+            float startCapSize,
+            SplineCap endCap,
+            float endCapSize,
+            const SplineElbow *elbows,          // Number of elbows must match number of spline segments (total points (excluding control points) minus 1)
+            const float *maxSharpnesses,        // Can be NULL if no elbow is SPLINE_ELBOW_SHARP
+            Color color
+        );
+    #endif      // RLSPLINES_SUPPORT_ULTRA
 
-// 2D Gradient splines drawing functions
-RLSPLINESAPI void DrawSplineGradient2Ex(Spline spline, float thick, SplineGradient2D colors);
-RLSPLINESAPI void DrawSplineGradient2Var(Spline spline, SplineThickness thick, SplineGradient2D colors);
-RLSPLINESAPI void DrawSplineGradient2Pro(Spline spline, SplineThickness thick, SplineCap cap, float capSize, SplineElbow elbow, float maxSharpness, SplineGradient2D colors);
-#ifdef RLSPLINES_SUPPORT_ULTRA
-RLSPLINESAPI void DrawSplineGradient2Ult(
-    Spline spline,
-    SplineThickness thick,
-    SplineCap startCap,
-    float startCapSize,
-    SplineCap endCap,
-    float endCapSize,
-    const SplineElbow *elbows,          // Number of elbows must match number of spline segments (total points (excluding control points) minus 1)
-    const float *maxSharpnesses,        // Can be NULL if no elbow is SPLINE_ELBOW_SHARP
-    SplineGradient2D colors
-);
-#endif      // RLSPLINES_SUPPORT_ULTRA
+    #ifdef RLSPLINES_SUPPORT_GRADIENT
 
-#endif      // RLSPLINES_SUPPORT_GRADIENT
+        // Gradient splines drawing functions
+        RLSPLINESAPI void DrawSplineGradient(Spline spline, SplineGradient colors);
+        RLSPLINESAPI void DrawSplineGradientEx(Spline spline, float thick, SplineGradient colors);
+        RLSPLINESAPI void DrawSplineGradientVar(Spline spline, SplineThickness thick, SplineGradient colors);
+        RLSPLINESAPI void DrawSplineGradientPro(Spline spline, SplineThickness thick, SplineCap cap, float capSize, SplineElbow elbow, float maxSharpness, SplineGradient colors);
+        #ifdef RLSPLINES_SUPPORT_ULTRA
+            RLSPLINESAPI void DrawSplineGradientUlt(
+                Spline spline,
+                SplineThickness thick,
+                SplineCap startCap,
+                float startCapSize,
+                SplineCap endCap,
+                float endCapSize,
+                const SplineElbow *elbows,          // Number of elbows must match number of spline segments (total points (excluding control points) minus 1)
+                const float *maxSharpnesses,        // Can be NULL if no elbow is SPLINE_ELBOW_SHARP
+                SplineGradient colors
+            );
+        #endif      // RLSPLINES_SUPPORT_ULTRA
 
-#ifdef RLSPLINES_SUPPORT_3D
+        // 2D Gradient splines drawing functions
+        RLSPLINESAPI void DrawSplineGradient2Ex(Spline spline, float thick, SplineGradient2D colors);
+        RLSPLINESAPI void DrawSplineGradient2Var(Spline spline, SplineThickness thick, SplineGradient2D colors);
+        RLSPLINESAPI void DrawSplineGradient2Pro(Spline spline, SplineThickness thick, SplineCap cap, float capSize, SplineElbow elbow, float maxSharpness, SplineGradient2D colors);
+        #ifdef RLSPLINES_SUPPORT_ULTRA
+            RLSPLINESAPI void DrawSplineGradient2Ult(
+                Spline spline,
+                SplineThickness thick,
+                SplineCap startCap,
+                float startCapSize,
+                SplineCap endCap,
+                float endCapSize,
+                const SplineElbow *elbows,          // Number of elbows must match number of spline segments (total points (excluding control points) minus 1)
+                const float *maxSharpnesses,        // Can be NULL if no elbow is SPLINE_ELBOW_SHARP
+                SplineGradient2D colors
+            );
+        #endif      // RLSPLINES_SUPPORT_ULTRA
 
-// 3D Splines drawing functions
-RLSPLINESAPI void DrawSpline3D(Spline3D spline, Color color);
-RLSPLINESAPI void DrawSpline3DEx(Spline3D spline, float thick, Color color);
-RLSPLINESAPI void DrawSpline3DVar(Spline3D spline, SplineThickness2D thick, Color color);
-RLSPLINESAPI void DrawSpline3DPro(Spline3D spline, SplineThickness2D thick, float capSize, SplineElbow elbow, float maxSharpness, Color color);
-#ifdef RLSPLINES_SUPPORT_ULTRA
-RLSPLINESAPI void DrawSpline3DUlt(
-    Spline3D spline,
-    SplineThickness2D thick,
-    SplineCap startCap,
-    float startCapSize,
-    SplineCap endCap,
-    float endCapSize,
-    const SplineElbow *elbows,          // Number of elbows must match number of spline segments (total points (excluding control points) minus 1)
-    const float *maxSharpnesses,        // Can be NULL if no elbow is SPLINE_ELBOW_SHARP
-    Color color
-);
-#endif      // RLSPLINES_SUPPORT_ULTRA
+    #endif      // RLSPLINES_SUPPORT_GRADIENT
 
-#ifdef RLSPLINES_SUPPORT_GRADIENT
+    #ifdef RLSPLINES_SUPPORT_3D
 
-// Gradient 3D splines drawing functions
-RLSPLINESAPI void DrawSpline3DGradient(Spline3D spline, SplineGradient colors);
-RLSPLINESAPI void DrawSpline3DGradientEx(Spline3D spline, float thick, SplineGradient colors);
-RLSPLINESAPI void DrawSpline3DGradientVar(Spline3D spline, SplineThickness2D thick, SplineGradient colors);
-RLSPLINESAPI void DrawSpline3DGradientPro(Spline3D spline, SplineThickness2D thick, float capSize, SplineElbow elbow, float maxSharpness, SplineGradient colors);
-#ifdef RLSPLINES_SUPPORT_ULTRA
-RLSPLINESAPI void DrawSpline3DGradientUlt(
-    Spline3D spline,
-    SplineThickness2D thick,
-    SplineCap startCap,
-    float startCapSize,
-    SplineCap endCap,
-    float endCapSize,
-    const SplineElbow *elbows,          // Number of elbows must match number of spline segments (total points (excluding control points) minus 1)
-    const float *maxSharpnesses,        // Can be NULL if no elbow is SPLINE_ELBOW_SHARP
-    SplineGradient colors
-);
-#endif      // RLSPLINES_SUPPORT_ULTRA
+        // 3D Splines drawing functions
+        RLSPLINESAPI void DrawSpline3D(Spline3D spline, Color color);
+        RLSPLINESAPI void DrawSpline3DEx(Spline3D spline, float thick, Color color);
+        RLSPLINESAPI void DrawSpline3DVar(Spline3D spline, SplineThickness2D thick, Color color);
+        RLSPLINESAPI void DrawSpline3DPro(Spline3D spline, SplineThickness2D thick, float capSize, SplineElbow elbow, float maxSharpness, Color color);
+        #ifdef RLSPLINES_SUPPORT_ULTRA
+            RLSPLINESAPI void DrawSpline3DUlt(
+                Spline3D spline,
+                SplineThickness2D thick,
+                SplineCap startCap,
+                float startCapSize,
+                SplineCap endCap,
+                float endCapSize,
+                const SplineElbow *elbows,          // Number of elbows must match number of spline segments (total points (excluding control points) minus 1)
+                const float *maxSharpnesses,        // Can be NULL if no elbow is SPLINE_ELBOW_SHARP
+                Color color
+            );
+        #endif      // RLSPLINES_SUPPORT_ULTRA
 
-// 2D Gradient 3D splines drawing functions
-RLSPLINESAPI void DrawSpline3DGradient2Ex(Spline3D spline, float thick, SplineGradient colors);
-RLSPLINESAPI void DrawSpline3DGradient2Var(Spline3D spline, SplineThickness2D thick, SplineGradient colors);
-RLSPLINESAPI void DrawSpline3DGradient2Pro(Spline3D spline, SplineThickness2D thick, SplineCap cap, float capSize, SplineElbow elbow, float maxSharpness, SplineGradient colors);
-#ifdef RLSPLINES_SUPPORT_ULTRA
-RLSPLINESAPI void DrawSpline3DGradient2Ult(
-    Spline3D spline,
-    SplineThickness2D thick,
-    SplineCap startCap,
-    float startCapSize,
-    SplineCap endCap,
-    float endCapSize,
-    const SplineElbow *elbows,          // Number of elbows must match number of spline segments (total points (excluding control points) minus 1)
-    const float *maxSharpnesses,        // Can be NULL if no elbow is SPLINE_ELBOW_SHARP
-    SplineGradient colors
-);
-#endif      // RLSPLINES_SUPPORT_ULTRA
+        #ifdef RLSPLINES_SUPPORT_GRADIENT
 
-#endif      // RLSPLINES_SUPPORT_GRADIENT
+            // Gradient 3D splines drawing functions
+            RLSPLINESAPI void DrawSpline3DGradient(Spline3D spline, SplineGradient colors);
+            RLSPLINESAPI void DrawSpline3DGradientEx(Spline3D spline, float thick, SplineGradient colors);
+            RLSPLINESAPI void DrawSpline3DGradientVar(Spline3D spline, SplineThickness2D thick, SplineGradient colors);
+            RLSPLINESAPI void DrawSpline3DGradientPro(Spline3D spline, SplineThickness2D thick, float capSize, SplineElbow elbow, float maxSharpness, SplineGradient colors);
+            #ifdef RLSPLINES_SUPPORT_ULTRA
+                RLSPLINESAPI void DrawSpline3DGradientUlt(
+                    Spline3D spline,
+                    SplineThickness2D thick,
+                    SplineCap startCap,
+                    float startCapSize,
+                    SplineCap endCap,
+                    float endCapSize,
+                    const SplineElbow *elbows,          // Number of elbows must match number of spline segments (total points (excluding control points) minus 1)
+                    const float *maxSharpnesses,        // Can be NULL if no elbow is SPLINE_ELBOW_SHARP
+                    SplineGradient colors
+                );
+            #endif      // RLSPLINES_SUPPORT_ULTRA
 
-#endif      // RLSPLINES_SUPPORT_3D
+            // 2D Gradient 3D splines drawing functions
+            RLSPLINESAPI void DrawSpline3DGradient2Ex(Spline3D spline, float thick, SplineGradient colors);
+            RLSPLINESAPI void DrawSpline3DGradient2Var(Spline3D spline, SplineThickness2D thick, SplineGradient colors);
+            RLSPLINESAPI void DrawSpline3DGradient2Pro(Spline3D spline, SplineThickness2D thick, SplineCap cap, float capSize, SplineElbow elbow, float maxSharpness, SplineGradient colors);
+            #ifdef RLSPLINES_SUPPORT_ULTRA
+                RLSPLINESAPI void DrawSpline3DGradient2Ult(
+                    Spline3D spline,
+                    SplineThickness2D thick,
+                    SplineCap startCap,
+                    float startCapSize,
+                    SplineCap endCap,
+                    float endCapSize,
+                    const SplineElbow *elbows,          // Number of elbows must match number of spline segments (total points (excluding control points) minus 1)
+                    const float *maxSharpnesses,        // Can be NULL if no elbow is SPLINE_ELBOW_SHARP
+                    SplineGradient colors
+                );
+            #endif      // RLSPLINES_SUPPORT_ULTRA
+
+        #endif      // RLSPLINES_SUPPORT_GRADIENT
+
+    #endif      // RLSPLINES_SUPPORT_3D
+
+#endif      // RLSPLINES_SUPPORT_DRAWING
 
 // Splines outline functions
 RLSPLINESAPI Spline SplineOutlineEx(Spline spline, float thick);                // Calculate spline outlines as a new spline
 RLSPLINESAPI Spline SplineOutlineVar(Spline spline, SplineThickness thick);     // Calculate spline outlines as a new spline
 RLSPLINESAPI Spline SplineOutlinePro(Spline spline, SplineThickness thick, SplineCap cap, float capSize, SplineElbow elbow, float maxSharpness); // Calculate spline outlines as a new spline
 #ifdef RLSPLINES_SUPPORT_ULTRA
-RLSPLINESAPI Spline SplineOutlineUlt(                                           // Calculate spline outlines as a new spline
-    Spline spline,
-    SplineThickness thick,
-    SplineCap startCap,
-    float startCapSize,
-    SplineCap endCap,
-    float endCapSize,
-    const SplineElbow *elbows,          // Number of elbows must match number of spline segments (total points (excluding control points) minus 1)
-    const float *maxSharpnesses         // Can be NULL if no elbow is SPLINE_ELBOW_SHARP
-);
+    RLSPLINESAPI Spline SplineOutlineUlt(                                           // Calculate spline outlines as a new spline
+        Spline spline,
+        SplineThickness thick,
+        SplineCap startCap,
+        float startCapSize,
+        SplineCap endCap,
+        float endCapSize,
+        const SplineElbow *elbows,          // Number of elbows must match number of spline segments (total points (excluding control points) minus 1)
+        const float *maxSharpnesses         // Can be NULL if no elbow is SPLINE_ELBOW_SHARP
+    );
 #endif      // RLSPLINES_SUPPORT_ULTRA
 
 #ifdef RLSPLINES_SUPPORT_3D
@@ -558,69 +601,19 @@ RLSPLINESAPI Spline Spline3DOutlineEx(Spline spline, float thick);              
 RLSPLINESAPI Spline Spline3DOutlineVar(Spline spline, SplineThickness thick);   // Calculate spline outlines as a new spline
 RLSPLINESAPI Spline Spline3DOutlinePro(Spline spline, SplineThickness thick, SplineCap cap, float capSize, SplineElbow elbow, float maxSharpness); // Calculate spline outlines as a new spline
 #ifdef RLSPLINES_SUPPORT_ULTRA
-RLSPLINESAPI Spline Spline3DOutlineUlt(                                         // Calculate spline outlines as a new spline
-    Spline3D spline,
-    SplineThickness2D thick,
-    SplineCap startCap,
-    float startCapSize,
-    SplineCap endCap,
-    float endCapSize,
-    const SplineElbow *elbows,          // Number of elbows must match number of spline segments (total points (excluding control points) minus 1)
-    const float *maxSharpnesses         // Can be NULL if no elbow is SPLINE_ELBOW_SHARP
-);
+    RLSPLINESAPI Spline Spline3DOutlineUlt(                                         // Calculate spline outlines as a new spline
+        Spline3D spline,
+        SplineThickness2D thick,
+        SplineCap startCap,
+        float startCapSize,
+        SplineCap endCap,
+        float endCapSize,
+        const SplineElbow *elbows,          // Number of elbows must match number of spline segments (total points (excluding control points) minus 1)
+        const float *maxSharpnesses         // Can be NULL if no elbow is SPLINE_ELBOW_SHARP
+    );
 #endif      // RLSPLINES_SUPPORT_ULTRA
 
 #endif      // RLSPLINES_SUPPORT_3D
-
-#ifdef RLSPLINES_DIMENSION_ALIASES
-
-// Spline2D, same as Spline
-typedef Spline Spline2D;
-
-// SplineThickness1D, same as SplineThickness
-typedef SplineThickness SplineThickness1D;
-
-// SplineGradient1D, same as SplineGradient
-typedef SplineGradient SplineGradient1D;
-
-#define DrawSpline2D DrawSpline                                 // Alias for DrawSpline
-#define DrawSpline2DEx DrawSplineEx                             // Alias for DrawSplineEx
-#define DrawSpline2DVar DrawSplineVar                           // Alias for DrawSplineVar
-#define DrawSpline2DPro DrawSplinePro                           // Alias for DrawSplinePro
-#define DrawSpline2DUlt DrawSplineUlt                           // Alias for DrawSplineUlt
-#define Spline2DOutlineEx SplineOutlineEx                       // Alias for SplineOutlineEx
-#define Spline2DOutlineVar SplineOutlineVar                     // Alias for SplineOutlineVar
-#define Spline2DOutlinePro SplineOutlinePro                     // Alias for SplineOutlinePro
-#define Spline2DOutlineUlt SplineOutlineUlt                     // Alias for SplineOutlineUlt
-
-#ifdef RLSPLINES_SUPPORT_GRADIENT
-
-#define DrawSpline2DGradient DrawSplineGradient                 // Alias for DrawSplineGradient
-#define DrawSpline2DGradientEx DrawSplineGradientEx             // Alias for DrawSplineGradientEx
-#define DrawSpline2DGradientVar DrawSplineGradientVar           // Alias for DrawSplineGradientVar
-#define DrawSpline2DGradientPro DrawSplineGradientPro           // Alias for DrawSplineGradientPro
-#define DrawSpline2DGradientUlt DrawSplineGradientUlt           // Alias for DrawSplineGradientUlt
-#define DrawSpline2DGradient1 DrawSplineGradient                // Alias for DrawSplineGradient
-#define DrawSpline2DGradient1Ex DrawSplineGradientEx            // Alias for DrawSplineGradientEx
-#define DrawSpline2DGradient1Var DrawSplineGradientVar          // Alias for DrawSplineGradientVar
-#define DrawSpline2DGradient1Pro DrawSplineGradientPro          // Alias for DrawSplineGradientPro
-#define DrawSpline2DGradient1Ult DrawSplineGradientUlt          // Alias for DrawSplineGradientUlt
-#define DrawSpline2DGradient2Ex DrawSplineGradient2Ex           // Alias for DrawSplineGradient2Ex
-#define DrawSpline2DGradient2Var DrawSplineGradient2Var         // Alias for DrawSplineGradient2Var
-#define DrawSpline2DGradient2Pro DrawSplineGradient2Pro         // Alias for DrawSplineGradient2Pro
-#define DrawSpline2DGradient2Ult DrawSplineGradient2Ult         // Alias for DrawSplineGradient2Ult
-
-#ifdef RLSPLINES_SUPPORT_3D
-#define DrawSpline3DGradient1 DrawSpline3DGradient              // Alias for DrawSpline3DGradient
-#define DrawSpline3DGradient1Ex DrawSpline3DGradientEx          // Alias for DrawSpline3DGradientEx
-#define DrawSpline3DGradient1Var DrawSpline3DGradientVar        // Alias for DrawSpline3DGradientVar
-#define DrawSpline3DGradient1Pro DrawSpline3DGradientPro        // Alias for DrawSpline3DGradientPro
-#define DrawSpline3DGradient1Ult DrawSpline3DGradientUlt        // Alias for DrawSpline3DGradientUlt
-#endif      // RLSPLINES_SUPPORT_3D
-
-#endif      // RLSPLINES_SUPPORT_GRADIENT
-
-#endif      // RLSPLINES_DIMENSION_ALIASES
 
 #ifdef __cplusplus
 }            // Prevents name mangling of functions
@@ -636,6 +629,65 @@ typedef SplineGradient SplineGradient1D;
 
 #ifdef RLSPLINES_IMPLEMENTATION
 
+// Allow custom memory allocators
+#if !defined(RLSPLINES_MALLOC) || !defined(RLSPLINES_CALLOC) || !defined(RLSPLINES_REALLOC) || !defined(RLSPLINES_FREE)
+    #include <stdlib.h>     // Required for: malloc(), calloc(), realloc(), free()
+#endif
+#ifndef RLSPLINES_MALLOC
+    #define RLSPLINES_MALLOC(sz)       malloc(sz)
+#endif
+#ifndef RLSPLINES_CALLOC
+    #define RLSPLINES_CALLOC(n,sz)     calloc(n,sz)
+#endif
+#ifndef RLSPLINES_REALLOC
+    #define RLSPLINES_REALLOC(p,sz)    realloc(p,sz)
+#endif
+#ifndef RLSPLINES_FREE
+    #define RLSPLINES_FREE(p)          free(p)
+#endif
+
+// Simple log system to avoid printf() calls if required
+// NOTE: Avoiding those calls, also avoids const strings memory usage
+#if RLSPLINES_SUPPORT_TRACELOG
+    #define RLSPLINES_TRACELOG(level, ...)           TraceLog(level, __VA_ARGS__)
+#else
+    #define RLSPLINES_TRACELOG(level, ...)           (void)0
+#endif
+
+#ifdef RLSPLNES_SUPPORT_DRAWING
+    #ifndef RLSPLINES_STANDALONE
+        #include "rlgl.h"
+        #define BeginLines() rlBegin()
+        #define BeginTriangles() rlBegin()
+        #define SetDrawColor(COLOR) rlColor4ub(COLOR.r, COLOR.g, COLOR.b, COLOR.a)
+        #define PushVertex2D(x, y) rlVertex2f(x, y)
+        #define PushVertex3D(x, y, z) rlVertex2f(x, y, z)
+        #define EndLines() rlEnd()
+        #define EndTriangles() rlEnd()
+    #else
+        void BeginLines();
+        void BeginTriangles();
+        void SetDrawColor(COLOR);
+        void PushVertex2D(x, y);
+        void PushVertex3D(x, y, z);
+        void EndLines();
+        void EndTriangles();
+    #endif
+#endif
+
+#include <math.h>               // Required for
+
+#if RLSPLINES_SUPPORT_SPLINE_CUSTOM
+
+    // Define these yourself
+
+    int GetSplineSegmentCountCustom(int pointCount);
+    extern int CUSTOM_SPLINE_MIN_SEGMENTS;
+    extern int CUSTOM_SPLINE_MAX_SEGMENTS;
+    extern int CUSTOM_SPLINE_CONTROLS_PER_SEGMENT;
+
+#endif      // RLSPLINES_SUPPORT_SPLINE_CUSTOM
+
 #ifdef __cplusplus
     #define RLSPLINES_CLITERAL(name) name
 #else
@@ -643,14 +695,14 @@ typedef SplineGradient SplineGradient1D;
 #endif
 
 // Generate spline with all points at 0,0
-// type: SPLINE_LINEAR, SPLINE_BASIS, SPLINE_CATMULL_ROM, SPLINE_BEZIER_QUAD, or SPLINE_BEZIER_CUBIC
-Spline GenSpline(int type, int segmentCount)
+// splineType: SPLINE_LINEAR, SPLINE_BASIS, SPLINE_CATMULL_ROM, SPLINE_BEZIER_QUAD, or SPLINE_BEZIER_CUBIC
+Spline GenSpline(int splineType, int segmentCount)
 {
     Spline spline = { 0 };
-    spline.type = type;
+    spline.splineType = splineType;
 
     int pointCount = 0;
-    switch (type)
+    switch (splineType)
     {
     #if RLSPLINES_SUPPORT_SPLINE_LINEAR
         case SPLINE_TYPE_LINEAR: pointCount = segmentCount; break;
@@ -681,6 +733,32 @@ Spline GenSpline(int type, int segmentCount)
 
     return spline;
 }
+
+#if RLSPLINES_SUPPORT_ARR_SPLINE
+// Construct a spline whose memory is managed outside of rlsplines
+//
+// IMPORTANT:
+// Because this memory is being managed outside of rlsplines,
+// the following functions must NOT be used on the return of this
+// function because they will try to deallocate the memory:
+// - ResizeSpline
+// - UnloadSpline
+//
+// The following functions, which may appear unsafe, ARE safe to use
+// because they only read the memory without deallocating:
+// - SplineJoin
+// - SplineJoinMany
+Spline GenSplineEM(int splineType, Vector2 *buffer, int pointCount)
+{
+    Spline spline = { 0 };
+
+    spline.splineType = splineType;
+    spline.pointCount = pointCount;
+    spline.points = (float *)buffer;
+
+    return spline;
+}
+#endif      // RLSPLINES_SUPPORT_ARR_SPLINE
 
 #if RLSPLINES_SUPPORT_SPLINE_LINEAR
 // Generate spline: Linear, minimum 2 points
@@ -1334,6 +1412,142 @@ void SetSplineControlOutY(Spline spline, int index, float value)
     SetSplinePointY(spline, SplineControlOutIndex(spline.type, index), value);
 }
 #endif
+
+// Splines position/derivative functions
+
+static bool SplineTIndex(int segmentCount, float *t, int *index)
+{
+    bool success = false;
+
+    if ((0.0f <= (*t)) && ((*t) <= 1.0f))
+    {
+        float tMajor = (*t)*segmentCount;
+        *index = (int)(tMajor);
+        *t = tMajor - (float)(*index);
+        success = true;
+    }
+
+    return success;
+}
+
+// Calculate position at t [0.0f .. 1.0f] along spline
+Vector2 GetSplinePosition(Spline spline, float t)
+{
+    Vector2 result = { 0 };
+
+    int index;
+    switch (spline.type)
+    {
+        #if RLSPLINES_SUPPORT_SPLINE_LINEAR
+        case SPLINE_TYPE_LINEAR:
+        {
+            if (SplineTIndex())
+            {
+                float a = (1 - t);
+                float b = t;
+
+                index *= 2;
+                float x1 = spline.points[index++];
+                float y1 = spline.points[index++];
+                float x2 = spline.points[index++];
+                float y2 = spline.points[index];
+
+                result.x = a*x1 + b*x2;
+                result.y = a*y1 + b*y2;
+            }
+
+            break;
+        }
+        #endif      // RLSPLINES_SUPPORT_SPLINE_LINEAR
+        #if RLSPLINES_SUPPORT_SPLINE_BASIS
+        // TODO: case SPLINE_TYPE_BASIS
+        #endif
+        #if RLSPLINES_SUPPORT_SPLINE_CATMULL_ROM
+        // TODO: case SPLINE_TYPE_CATMULL_ROM
+        #endif
+        #if RLSPLINES_SUPPORT_SPLINE_BEZIER_QUAD
+        case SPLINE_TYPE_BEZIER_QUAD:
+        {
+            float a = (1 - t)*(1 - t);
+            float b = 2*(1 - t)*t;              // the '2' comes from Pascal's Triangle (binomial expansion)
+            float c = t*t;
+
+            index *= 4;
+            float x1 = spline.points[index++];
+            float y1 = spline.points[index++];
+            float x2 = spline.points[index++];
+            float y2 = spline.points[index++];
+            float x3 = spline.points[index++];
+            float y3 = spline.points[index];
+
+            result.x = a*x1 + b*x2 + c*x3;
+            result.y = a*y1 + b*y2 + c*y3;
+
+            break;
+        }
+        #endif
+        #if RLSPLINES_SUPPORT_SPLINE_BEZIER_CUBIC
+        case SPLINE_TYPE_BEZIER_CUBIC:
+        {
+            float a = (1 - t)*(1 - t)*(1 - t);
+            float b = 3*(1 - t)*(1 - t)*t;      // the '3' comes from Pascal's Triangle (trinomial expansion)
+            float c = 3*(1 - t)*t*t;            // the '3' comes from Pascal's Triangle (trinomial expansion)
+            float d = t*t*t;
+
+            index *= 6;
+            float x1 = spline.points[index++];
+            float y1 = spline.points[index++];
+            float x2 = spline.points[index++];
+            float y2 = spline.points[index++];
+            float x3 = spline.points[index++];
+            float y3 = spline.points[index++];
+            float x4 = spline.points[index++];
+            float y4 = spline.points[index];
+
+            result.x = a*x1 + b*x2 + c*x3 + d*x4;
+            result.y = a*y1 + b*y2 + c*y3 + d*y4;
+
+            break;
+        }
+        #endif
+        #if RLSPLINES_SUPPORT_SPLINE_CUSTOM
+        case SPLINE_TYPE_CUSTOM: // TODO
+        #endif
+        default: RLSPLINES_TRACELOG(LOG_WARNING, "RLSPLINES: Unsupported spline type: %i", type); break;
+    }
+
+    return result;
+}
+
+// Calculate velocity (derivative order 1) at t [0.0f .. 1.0f] along spline
+Vector2 GetSplineVelocity(Spline spline, float t)
+{
+    // TODO
+}
+
+// Calculate acceleration (derivative order 2) at t [0.0f .. 1.0f] along spline
+Vector2 GetSplineAcceleration(Spline spline, float t)
+{
+    // TODO
+}
+
+// Calculate jolt/jerk (derivative order 3) at t [0.0f .. 1.0f] along spline
+Vector2 GetSplineJolt(Spline spline, float t)
+{
+    // TODO
+}
+
+// Calculate derivative order n at t [0.0f .. 1.0f] along spline
+Vector2 GetSplineNDerivative(Spline spline, int order, float t)
+{
+    // TODO
+}
+
+// Calculate bounding box of spline
+Rectangle GetSplineBounds(Spline spline)
+{
+    // TODO
+}
 
 // Draw a 2D spline using lines
 void DrawSpline(Spline spline, Color color)

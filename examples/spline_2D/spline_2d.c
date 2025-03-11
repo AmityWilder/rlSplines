@@ -18,7 +18,13 @@
 #include "raylib.h"
 
 #define RLSPLINES_IMPLEMENTATION
-#define RLSPLINES_ULTRA
+#define RLSPLINES_SUPPORT_SPLINE_LINEAR 1
+#define RLSPLINES_SUPPORT_SPLINE_BASIS 1
+#define RLSPLINES_SUPPORT_SPLINE_CATMULL_ROM 1
+#define RLSPLINES_SUPPORT_SPLINE_BEZIER_QUAD 1
+#define RLSPLINES_SUPPORT_SPLINE_BEZIER_CUBIC 1
+#define RLSPLINES_SUPPORT_SPLINE_CUSTOM 1
+#define RLSPLINES_SUPPORT_ULTRA
 #include "../../src/rlsplines.h"
 
 //------------------------------------------------------------------------------------
@@ -36,22 +42,21 @@ int main()
 
     Spline splineLinear;
     {
-        // Points only need to be coped, the array doesn't have to outlive the Spline
+        // Points only need to be copied, the array doesn't have to outlive the Spline
         Vector2 points[] = { { 50,100 }, { 100,200 }, { 150,100 }, { 200,200 } };
         splineLinear = GenSplineLinear(points, 4);
     }
 
     Spline splineQuad;
     {
-        // Points only need to be coped, the array doesn't have to outlive the Spline
-        Vector2 points[]        = { { 50,100 },             { 100,200 },              { 150,100 },              { 200,200 } };
-        Vector2 controlPoints[] = {             { 50,200 },              { 150,200 },              { 200,100 }              };
+        // Points only need to be copied, the array doesn't have to outlive the Spline
+        Vector2 points[] = { { 50,100 }, { 100,200 }, { 150,100 }, { 200,200 } };
+        Vector2 controlPoints[] = { { 50,200 }, { 150,200 }, { 200,100 } };
         splineQuad = GenSplineBezierQuad(points, controlPoints, 4);
     }
 
     Spline splineCubic;
     {
-        // Points only need to be coped, the array doesn't have to outlive the Spline
         splineCubic = GenSplineBezierCubic(NULL, NULL, NULL, 4);
     }
 

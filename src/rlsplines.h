@@ -18,15 +18,7 @@
 *           Allows rlsplines to work without Raylib.
 *
 *       #define RLSPLINES_SUPPORT_DRAWING  <1 or 0>  (1 by default)
-*           Enable support for spline rendering. Requires defining your own implementations for the
-*           following functions if RLSPLINES_STANDALONE is defined.
-*           - BeginLines()
-*           - BeginTriangles()
-*           - SetDrawColor(r, g, b, a)
-*           - PushVertex2D(x, y)
-*           - PushVertex3D(x, y, z)
-*           - EndLines()
-*           - EndTriangles()
+*           Enable support for spline rendering. Incompatible with RLSPLINES_STANDALONE.
 *
 *       #define RLSPLINES_SUPPORT_TRACELOG  <1 or 0>  (1 by default)
 *           Enable tracelog for rlsplines.
@@ -45,6 +37,10 @@
 *
 *       #define RLSPLINES_SUPPORT_SPLINE_BEZIER_CUBIC  <1 or 0>  (1 by default)
 *           Enable support for Cubic Bezier splines.
+*
+*       #define RLSPLINES_SUPPORT_SPLINE_BEZIER_WILDER_CUBIC  <1 or 0>  (0 by default)
+*           Enable support for Cubic Bezier-Wilder splines, a Cubic Bezier spline that
+*           passes through every control point (but is difficult to make corners with).
 *
 *       #define SPLINE_SEGMENT_DIVISIONS  <integer greater than 0>  (24 by default)
 *           Define the number of subdivisions used per spline segment.
@@ -111,6 +107,10 @@
 // Configuration defaults
 #ifndef RLSPLINES_SUPPORT_DRAWING
     #define RLSPLINES_SUPPORT_DRAWING 1
+    #ifdef RLSPLINES_STANDALONE
+        #warning RLSPLINES_SUPPORT_DRAWING is incompatible with RLSPLINES_STANDALONE; un-enabling RLSPLINES_STANDALONE
+        #undef RLSPLINES_STANDALONE
+    #endif
 #endif
 #ifndef RLSPLINES_SUPPORT_TRACELOG
     #define RLSPLINES_SUPPORT_TRACELOG 1
@@ -130,23 +130,8 @@
 #ifndef RLSPLINES_SUPPORT_SPLINE_BEZIER_CUBIC
     #define RLSPLINES_SUPPORT_SPLINE_BEZIER_CUBIC 1
 #endif
-#ifndef RLSPLINES_SUPPORT_SPLINE_CUSTOM
-    #define RLSPLINES_SUPPORT_SPLINE_CUSTOM 0
-#endif
-#ifndef RLSPLINES_SUPPORT_ARR_SPLINE
-    #define RLSPLINES_SUPPORT_ARR_SPLINE 0
-#endif
-#ifndef RLSPLINES_SUPPORT_3D
-    #define RLSPLINES_SUPPORT_3D 0
-#endif
-#ifndef RLSPLINES_SUPPORT_GRADIENT
-    #define RLSPLINES_SUPPORT_GRADIENT 0
-#endif
-#ifndef RLSPLINES_SUPPORT_ULTRA
-    #define RLSPLINES_SUPPORT_ULTRA 0
-#endif
-#ifndef RLSPLINES_DIMENSION_ALIASES
-    #define RLSPLINES_DIMENSION_ALIASES 0
+#ifndef RLSPLINES_SUPPORT_SPLINE_BEZIER_WILDER_CUBIC
+    #define RLSPLINES_SUPPORT_SPLINE_BEZIER_CUBIC 0
 #endif
 #ifndef SPLINE_SEGMENT_DIVISIONS
     #define SPLINE_SEGMENT_DIVISIONS  24        // Spline segments subdivisions
@@ -160,7 +145,7 @@
     !RLSPLINES_SUPPORT_SPLINE_CATMULL_ROM && \
     !RLSPLINES_SUPPORT_SPLINE_BEZIER_QUAD && \
     !RLSPLINES_SUPPORT_SPLINE_BEZIER_CUBIC && \
-    !RLSPLINES_SUPPORT_SPLINE_CUSTOM
+    !RLSPLINES_SUPPORT_SPLINE_BEZIER_WILDER_CUBIC
     #warning No spline support selected
 #endif
 
@@ -183,15 +168,6 @@
 #ifndef RLSPLINES_STANDALONE
     #include "raylib.h"
 #else
-    #if RLSPLINES_SUPPORT_DRAWING
-        typedef struct Color {
-            unsigned char r;
-            unsigned char g;
-            unsigned char b;
-            unsigned char a;
-        } Color;
-    #endif      // RLSPLINES_SUPPORT_DRAWING
-
     typedef struct Vector2 {
         float x;
         float y;
@@ -227,11 +203,18 @@ typedef struct BoundsRect {
     } SplineBezierCubic;
 #endif
 
+#if RLSPLINES_SUPPORT_SPLINE_BEZIER_WILDER_CUBIC
+    // Cubic Bezier spline, minimum 4 points (2 control points)
+    typedef struct SplineBezierWCubic {
+        int pointCount;                     // Number of points (both anchor and control)
+        float *points;                      // Point (both anchor and control) positions (XY - 2 components per vertex): [p1, c2, c3, p4, c5, c6...]
+    } SplineBezierWCubic;
+#endif
+
 // Spline thickness, variable thickness data in the form of a 1D Cubic Bezier spline with remapped timings (t-values) along the curve of another spline
 typedef struct ThicknessSpline {
-    int controlCount;                   // Number of thicknesses
-    float *timings;                     // Thickness timings (t-values), minimum 4 values (2 control values): [t1, t2, t3, t4, t5, t6...], or NULL if evenly spread
-    float *thicknesses;                 // Thicknesses, minimum 4 points (2 control points): [p1, c2, c3, p4, c5, c6...]
+    int controlCount;                   // Number of controls
+    float *controls;                    // Controls (timing and thickness) (tT - 2 components per vertex), ascending order of timing, minimum 4 points (2 control points): [p1, c2, c3, p4, c5, c6...]
 } ThicknessSpline;
 
 //----------------------------------------------------------------------------------
@@ -405,8 +388,6 @@ RLSPLINESAPI void DrawSplineBezierCubicUlt(SplineBezierCubic spline, ThicknessSp
 
 #endif      // RLSPLINES_SUPPORT_DRAWING
 
-#endif      // RLSPLINES_SUPPORT_SPLINE_BEZIER_CUBIC
-
 #ifdef __cplusplus
 }            // Prevents name mangling of functions
 #endif
@@ -437,7 +418,7 @@ RLSPLINESAPI void DrawSplineBezierCubicUlt(SplineBezierCubic spline, ThicknessSp
 // Simple log system to avoid printf() calls if required
 // NOTE: Avoiding those calls, also avoids const strings memory usage
 #if RLSPLINES_SUPPORT_TRACELOG
-    #ifndef RLSPLINES_STANDALONE
+    #ifdef RLSPLINES_STANDALONE
         #include <stdio.h>
         typedef enum { LOG_DEBUG = 2, LOG_INFO, LOG_WARNING, LOG_ERROR } TraceLogLevel;
         void TraceLog(int level, const char *fmt, ...)
@@ -465,25 +446,7 @@ RLSPLINESAPI void DrawSplineBezierCubicUlt(SplineBezierCubic spline, ThicknessSp
 #endif
 
 #ifdef RLSPLNES_SUPPORT_DRAWING
-    #ifndef RLSPLINES_STANDALONE
-        #include "rlgl.h"
-        #define BeginLines() rlBegin()
-        #define BeginTriangles() rlBegin()
-        #define SetDrawColor(r, g, b, a) rlColor4ub(r, g, b, a)
-        #define PushVertex2D(x, y) rlVertex2f(x, y)
-        #define PushVertex3D(x, y, z) rlVertex2f(x, y, z)
-        #define EndLines() rlEnd()
-        #define EndTriangles() rlEnd()
-    #else
-        // Define these yourself
-        void BeginLines();
-        void BeginTriangles();
-        void SetDrawColor(r, g, b, a);
-        void PushVertex2D(x, y);
-        void PushVertex3D(x, y, z);
-        void EndLines();
-        void EndTriangles();
-    #endif
+    #include "rlgl.h"
 #endif
 
 #include <math.h>               // Required
@@ -525,8 +488,7 @@ ThicknessSpline LoadThicknessSpline(int controlCount)
     if (controlCount > 0)
     {
         thick.controlCount = controlCount;
-        thick.timings = (float *)RLSPLINES_CALLOC(thick.controlCount, sizeof(float));
-        thick.thicknesses = (float *)RLSPLINES_CALLOC(thick.controlCount, sizeof(float));
+        thick.controls = (float *)RLSPLINES_CALLOC(thick.controlCount*2, sizeof(float));
     }
 
     return thick;
@@ -553,41 +515,58 @@ ThicknessSpline ThicknessSplineResize(ThicknessSpline thick, int newControlCount
 // Unload thickness spline from CPU memory (RAM)
 void UnloadThicknessSpline(ThicknessSpline thick)
 {
-    RLSPLINES_FREE(thick.timings);
-    RLSPLINES_FREE(thick.thicknesses);
+    RLSPLINES_FREE(thick.controls);
 }
 
 // Get thickness of spline control
 float GetThicknessSplineThick(ThicknessSpline thick, int index)
 {
-    // TODO
+    float result = 0.0f;
+
+    if ((0 <= index) && (index < thick.controlCount) &&
+        (thick.controls != NULL))
+    {
+        result = thick.controls[2*index + 1];
+    }
+    else RLSPLINES_TRACELOG(LOG_WARNING, "RLSPLINES: Index out of bounds");
+
+    return result;
 }
 
 // Get timing of spline control
 float GetThicknessSplineTiming(ThicknessSpline thick, int index)
 {
-    // TODO
+    float result = 0.0f;
+
+    if ((0 <= index) && (index < thick.controlCount) &&
+        (thick.controls != NULL))
+    {
+        result = thick.controls[2*index];
+    }
+    else RLSPLINES_TRACELOG(LOG_WARNING, "RLSPLINES: Index out of bounds");
+
+    return result;
 }
 
 // Get (calculate) thickness at t [0.0f .. 1.0f]
 float GetThicknessSplineValue(ThicknessSpline thick, float t)
 {
-    // float result = 0.0f;
+    float result = 0.0f;
 
-    // int segmentCount = thick.controlCount - 1;
-    // if ((0.0f <= t) && (t <= 1.0f) && (segmentCount > 0) && (thick.timings != NULL))
-    // {
-    //     int indexPrev = 0.0f, indexNext = 0.0f;
-    //     float thickPrev = 0.0f, thickNext = 0.0f;
-    //     float timingPrev = 0.0f, timingNext = 0.0f;
-    //     for (int i = 0; i < thick.controlCount; ++i)
-    //     {
-    //         if (t)
-    //     }
-    //     result = ;
-    // }
+    int segmentCount = thick.controlCount - 1;
+    if ((0.0f <= t) && (t <= 1.0f) && (segmentCount > 0) && (thick.controls != NULL))
+    {
+        int indexPrev = 0.0f, indexNext = 0.0f;
+        float thickPrev = 0.0f, thickNext = 0.0f;
+        float timingPrev = 0.0f, timingNext = 0.0f;
+        for (int i = 0; i < thick.controlCount; ++i)
+        {
+            if (t)
+        }
+        result = ;
+    }
 
-    // return result;
+    return result;
 }
 
 #if RLSPLINES_SUPPORT_SPLINE_LINEAR
@@ -1203,6 +1182,43 @@ void DrawSplineBezierCubicUlt(SplineBezierCubic spline, ThicknessSpline thick, S
 #endif      // RLSPLINES_SUPPORT_DRAWING
 
 #endif      // RLSPLINES_SUPPORT_SPLINE_BEZIER_CUBIC
+
+#if RLSPLINES_SUPPORT_SPLINE_BEZIER_WILDER_CUBIC
+
+// Splines position/derivative functions
+
+// Calculate position at t [0.0f .. 1.0f] along spline
+// https://www.desmos.com/calculator/u9zthpb9kk
+Vector2 GetSplineBezierWilderCubicPosition(SplineBezierWilderCubic spline, float t)
+{
+    Vector2 result = { 0 };
+
+    float x0;
+    float x0;
+    float x1a;
+    float x1a;
+    float x2a;
+    float x2a;
+    float x3;
+    float x3;
+
+    // limit coefficients
+    float a = -5.0f/6.0f;
+    float b = 3.0f;
+    float c = -3.0f/2.0f;
+    float d = 1.0f/3.0f;
+
+    float x1 = a*x0 + b*x1a + c*x2a + d*x3;
+    float y1 = a*y0 + b*y1a + c*y2a + d*y3;
+    float x2 = a*x3 + b*x2a + c*x1a + d*x0;
+    float y2 = a*y3 + b*y2a + c*y1a + d*y0;
+
+    // continue as usual
+
+    return result;
+}
+
+#endif
 
 // ---------------------------------------------------------------------------------------------------------
 

@@ -2,79 +2,11 @@
 
 By Amy Wilder
 
-The symbol $\tfrac{d}{dt}\_$ means "the **derivative** of $\_$ with respect to $t$".
+This document may help you to find **derivatives**.
+The symbol $\tfrac{d}{dt}\underline{\phantom{\dots}}$ means "the **derivative** of $\underline{\phantom{\dots}}$ with respect to $t$".
 
-## Process
-
-To find the derivative of an expression, first look at the expression in reverse-order of operations:
-
-1. Addition/subtraction
-2. Multiplication/division
-3. Exponents/roots
-4. Groupings (parentheses/brackets)
-
-Ignore anything that isn't at the order you are currently looking at, and recursively solve each derivative separately until you reach a rule doesn't have a derivative in the answer.
-
-### Example
-
-Say you want to find the derivative of
-
-$$\frac{3t}{6t^2 + 4} + 5t - 8$$
-
-```c
-(3*t)/(6*t*t + 4) + 5*t - 8
-```
-
-First, group this up by order of operations.
-
-$$
-\tfrac{d}{dt}
-\left(
-    \left(
-        \frac{
-        \left(
-            3
-            \cdot
-            t
-        \right)
-        }{
-        \left(
-            \left(
-                6
-                \cdot
-                \left(
-                    t^2
-                \right)
-            \right)
-            +
-            4
-        \right)
-        }
-    \right)
-    +
-    \left(
-        5
-        \cdot
-        t
-    \right)
-    -
-    8
-\right)
-$$
-
-Then, recursively solve the derivative starting from the outside until there are no $\tfrac{d}{dt}$ left.
-
-$$
-\tfrac{d}{dt}(\square + \square - \square) = \underbrace{\tfrac{d}{dt}\square}_1 + \underbrace{\tfrac{d}{dt}\square}_2 - \underbrace{\tfrac{d}{dt}\square}_3 \\~\\
-\begin{align*}
-1.~& \begin{aligned}
-\tfrac{d}{dt}\left(\frac{\square}{\triangle}\right) = \frac{\overbrace{\left(\tfrac{d}{dt}\square\right)}^{1.1}\triangle - \square\overbrace{\left(\tfrac{d}{dt}\triangle\right)}^{1.2}}{\triangle^2}
-1.1
-\end{aligned}\\~\\
-2.~& \tfrac{d}{dt} \\~\\
-3.~& \tfrac{d}{dt}8 = 0
-\end{align*}
-$$
+You may need to find the **derivative** of your `PositionCallback` function to provide rlsplines with a custom `VelocityCallback` function,
+and the **derivative** of your `VelocityCallback` function to provide a custom `AccelerationCallback` function.
 
 ## Rules of Derivatives
 
@@ -176,3 +108,131 @@ D_DT(Foo(Bar(t))) == (
 ```
 
 #### Examples
+
+## Process
+
+To find the derivative of an expression, first look at the expression in reverse-order of operations:
+
+1. Addition/subtraction
+2. Multiplication/division
+3. Exponents/roots
+4. Groupings (parentheses/brackets)
+
+Ignore anything that isn't at the order you are currently looking at, and recursively solve each derivative separately until you reach a rule doesn't have a derivative in the answer.
+
+### Example
+
+Let's say you want to find the derivative of
+
+$$\frac{3t}{6t^2 + 4} + 5t - 8$$
+
+```c
+(3*t)/(6*t*t + 4) + 5*t - 8
+```
+
+First, look at the outermost order of operations. Then, recursively solve the derivative starting from the outside until there are no $\tfrac{d}{dt}$ left.
+
+$\displaystyle\tfrac{d}{dt}(\square + \triangle - \Diamond) \quad=\quad \overbrace{\tfrac{d}{dt}\square}^1 + \overbrace{\tfrac{d}{dt}\triangle}^2 - \overbrace{\tfrac{d}{dt}\Diamond}^3$ \
+([Sum/Difference Rule](#sumdifference-rule))
+
+<ol type="1">
+<li>    <!-- 1 -->
+
+$\displaystyle\tfrac{d}{dt}\left(\frac{\square}{\triangle}\right) \quad=\quad \frac{\overbrace{\left(\tfrac{d}{dt}\square\right)}^{1.1}\cdot\triangle - \square\cdot\overbrace{\left(\tfrac{d}{dt}\triangle\right)}^{1.2}}{\triangle^2} \quad=\quad \frac{\left(\tfrac{d}{dt}\square\right)\cdot(6t^2+4) - (3t)\cdot\left(\tfrac{d}{dt}\triangle\right)}{{(6t^2+4)}^2}$ \
+([Quotient Rule](#quotient-rule))
+
+<ol type="1">
+<li>    <!-- 1.1 -->
+
+$\displaystyle\tfrac{d}{dt}(3 \cdot \square) \quad=\quad 3 \cdot \overbrace{\tfrac{d}{dt}\square}^{1.1.1}$ \
+([Constant Multiple Rule](#constant-multiple-rule))
+
+<ol type="1">
+<li>    <!-- 1.1.1 -->
+
+$\displaystyle\tfrac{d}{dt}t = 1$ \
+([Power Rule](#power-rule))
+
+</li>   <!-- 1.1.1 -->
+</ol>
+
+$3 \cdot \underset{\mathclap{\gray{\tfrac{d}{dt}t}}}{1} = 3$
+
+</li>   <!-- 1.1 -->
+</ol>
+
+</li>   <!-- 1 -->
+<li>    <!-- 2 -->
+
+$\displaystyle\tfrac{d}{dt}(5 \cdot \square) \quad=\quad 5 \cdot \overbrace{\tfrac{d}{dt}\square}^{2.1}$ \
+([Constant Multiple Rule](#constant-multiple-rule))
+
+<ol>
+<li>    <!-- 2.1 -->
+
+$\displaystyle\tfrac{d}{dt}t = 1$ \
+([Power Rule](#power-rule))
+
+</li>   <!-- 2.1 -->
+</ol>
+
+$5 \cdot \underset{\mathclap{\gray{\tfrac{d}{dt}t}}}{1} = 5$
+
+</li>   <!-- 2 -->
+<li>    <!-- 3 -->
+
+$\displaystyle\tfrac{d}{dt}8 = 0$ \
+([Constant Rule](#constant-rule))
+
+</li>   <!-- 3 -->
+</ol>
+
+```c
+#define D_DT(...) // magical pseudocode
+
+(3*t)/(6*t*t + 4) + 5*t - 8;
+
+D_DT(/*(3*t)/(6*t*t + 4)*/ + /*5*t*/ - /*8*/)                   // Sum/difference rule
+    == (D_DT(/*(3*t)/(6*t*t + 4)*/) + D_DT(/*5*t*/) - D_DT(/*8*/));
+
+    // 1
+    D_DT((/*3*t*/)/(/*6*t*t + 4*/))                             // Quotient rule
+        == ((D_DT(/*3*t*/)*(6*t*t + 4) - (3*t)*D_DT(/*6*t*t + 4*/))/pow(6*t*t + 4, 2));
+
+        // 1.1
+        D_DT(3*(/*t*/))                                         // Constant multiple rule
+            == (3*D_DT(/*t*/));
+
+            // 1.1.1
+            D_DT(t) == 1;                                       // Power rule
+
+        (3*1) == 3;                                             // Algebra
+
+        // 1.2
+        D_DT(/*6*t*t*/ + /*4*/)                                 // Sum/difference rule
+            == (D_DT(/*6*t*t*/) + D_DT(/*4*/));
+
+            // 1.2.1
+            D_DT(6*/*t*t*/)                                     // Constant multiple rule
+                == (6*D_DT(/*t*t*/));
+
+                // 1.2.1.1
+                D_DT(t*t) == (2*t);                             // Power rule
+
+            (6*(2*t)) == (12*t);                                // Algebra
+
+    ((3*(6*t*t + 4) - (3*t)*(12*t))/pow(6*t*t + 4, 2))          // Algebra
+        == ((6*(2 - 3*t*t))/pow(6*t*t + 4, 2));
+
+    // 2
+    D_DT(5*(/*t*/))                                             // Constant multiple rule
+        == (5*D_DT(/*t*/));
+
+        // 2.1
+        D_DT(t) == 1;                                           // Power rule
+
+    5*1 == 5;                                                   // Algebra
+
+    // 3
+    D_DT(8) == 0;                                               // Constant rule
+```
